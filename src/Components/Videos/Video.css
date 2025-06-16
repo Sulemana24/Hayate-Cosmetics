@@ -1,0 +1,21 @@
+.video-section {
+  text-align: center;
+}
+
+.video-wrapper {
+  display: inline-block;
+}
+
+iframe {
+  width: 100%;
+  max-width: 1200px;
+  height: 300px;
+  border: none;
+  border-radius: 8px;
+}
+
+@media (width > 768px) {
+  iframe {
+    width: 700px;
+  }
+}

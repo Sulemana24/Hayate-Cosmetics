@@ -1,0 +1,103 @@
+.about-company {
+  background-color: #fefafc;
+  padding: 4rem 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+.company-details h2::after {
+  content: "";
+  display: block;
+  width: 60px;
+  height: 3px;
+  background: var(--text-dark);
+  margin-top: 0.5rem;
+  border-radius: 2px;
+}
+
+.about-company-container {
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 1200px;
+  gap: 2rem;
+  align-items: center;
+}
+
+.company-image img {
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  border-radius: 1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.company-details {
+  flex: 1;
+  min-width: 300px;
+}
+
+.company-details h2 {
+  font-size: 2rem;
+  color: var(--text-dark);
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.company-description,
+.extra-company-info {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--text-dark);
+  margin-bottom: 1rem;
+}
+
+.extra-company-info {
+  display: none;
+}
+
+.extra-company-info.show {
+  display: block;
+  animation: fadeIn 0.6s ease;
+}
+
+.show-more-company-btn {
+  background: var(--text-dark);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 2rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.3s ease;
+}
+
+.show-more-company-btn:active {
+  background: var(--hover);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile responsiveness */
+@media screen and (max-width: 768px) {
+  .company-details h2::after {
+    display: none;
+  }
+
+  .about-company-container {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .company-image img {
+    max-width: 100%;
+  }
+}
