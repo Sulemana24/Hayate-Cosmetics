@@ -1,6 +1,6 @@
 .appointments-container {
   max-width: 600px;
-  margin: 3rem auto;
+  margin: 9rem auto 3rem;
   padding: 2rem;
   background: #f9f9f9;
   border-radius: 12px;
@@ -11,6 +11,7 @@
   text-align: center;
   margin-bottom: 1.5rem;
   color: #1b3c35;
+  font-size: 16px;
 }
 
 .appointment-form {
@@ -49,4 +50,10 @@
   border: 1px solid #b8e6c0;
   border-radius: 12px;
   color: #2e7d32;
+}
+
+@media (width >= 768px) {
+  .appointments-container h2 {
+    font-size: 28px;
+  }
 }

@@ -7,11 +7,13 @@ import Cart from "./Pages/Cart";
 import LoginSignup from "./Pages/LoginSignup";
 import Footer from "./Components/Footer/Footer";
 import Appointments from "./Pages/Appointments";
+import ScrollToTop from "./Pages/ScrollToTop";
 
 function App() {
   return (
     <div>
       <BrowserRouter>
+        <ScrollToTop />
         <Navbar />
         <Routes>
           <Route path="/" element={<Home />} />

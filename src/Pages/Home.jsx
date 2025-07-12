@@ -15,9 +15,13 @@ const Home = () => {
       <Hero />
       <Popular />
       <Offers />
-      <NewProducts />
+      <div id="shop">
+        <NewProducts />
+      </div>
       <Partners />
-      <AboutCompany />
+      <div id="about">
+        <AboutCompany />
+      </div>
       <Ceo />
       <NewsLetter />
       <Video />

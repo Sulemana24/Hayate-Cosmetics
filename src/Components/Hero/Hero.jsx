@@ -11,8 +11,30 @@ const Hero = () => {
           and confidence to your everyday life.
         </p>
         <div className="hero-buttons">
-          <button>Shop Now</button>
-          <button>Learn More</button>
+          <button
+            onClick={() => {
+              setTimeout(() => {
+                const shopSection = document.getElementById("shop");
+                if (shopSection) {
+                  shopSection.scrollIntoView({ behavior: "smooth" });
+                }
+              }, 300);
+            }}
+          >
+            Shop Now
+          </button>
+          <button
+            onClick={() => {
+              setTimeout(() => {
+                const aboutSection = document.getElementById("about");
+                if (aboutSection) {
+                  aboutSection.scrollIntoView({ behavior: "smooth" });
+                }
+              }, 300);
+            }}
+          >
+            Learn More
+          </button>
         </div>
       </div>
     </div>

@@ -7,6 +7,8 @@ import { ShopContext } from "../../Context/ShopContext";
 const ProductDisplay = (props) => {
   const { product } = props;
   const { addToCart } = useContext(ShopContext);
+  const isLoggedIn = localStorage.getItem("auth-token");
+
   return (
     <div className="productdisplay">
       <div className="productdisplay-left">
@@ -44,11 +46,14 @@ const ProductDisplay = (props) => {
           {product.description}
         </div>
         <button
+          disabled={!isLoggedIn}
           onClick={() => {
-            addToCart(product.id);
+            if (isLoggedIn) {
+              addToCart(product.id);
+            }
           }}
         >
-          ADD TO CART
+          {isLoggedIn ? "ADD TO CART" : "LOGIN TO BUY"}
         </button>
         <p className="productdisplay-right-category">
           <span>Category :</span> {product.category}

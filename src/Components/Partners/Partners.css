@@ -23,11 +23,14 @@ h2 {
 }
 
 .partner-logo img {
-  width: 60px;
-  height: auto;
-  transition: transform 0.3s ease-in-out;
+  max-width: 80px;
+  max-height: 50px;
+  object-fit: contain;
+  opacity: 0.8;
+  transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
 .partner-logo img:hover {
   transform: scale(1.1);
+  opacity: 1;
 }

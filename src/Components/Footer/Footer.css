@@ -4,9 +4,9 @@
   justify-content: center;
   align-items: center;
   gap: 30px;
-  background: var(--primary-color);
   color: var(--text-dark);
   margin-top: 4rem;
+  padding: 0 1rem;
 }
 
 .footer-logo {
@@ -14,6 +14,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--primary-color);
+  border-radius: 5px;
 }
 
 .footer-links {
@@ -21,6 +23,9 @@
   list-style: none;
   gap: 50px;
   font-size: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  text-align: center;
 }
 
 .footer-links li {
@@ -29,13 +34,24 @@
 
 .footer-icons-container {
   padding: 10px;
-  background: #fbfbfb;
+  background: var(--primary-color);
   border: 1px solid #ebebeb;
   border-radius: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 50px;
+  gap: 40px;
+}
+
+.footer-icons-container a {
+  color: var(--text-dark);
+  text-decoration: none;
+  transition: transform 0.2s ease;
+}
+
+.footer-icons-container a:hover {
+  color: #fff;
+  transform: scale(1.1);
 }
 
 .footer-copyright {
@@ -53,12 +69,50 @@
   border: none;
   border-radius: 10px;
   height: 3px;
-  background: #c7c7c7;
+  background: var(--text-dark);
+}
+
+.footer-links li:hover {
+  text-decoration: underline;
+}
+
+.footer-logo img {
+  width: 80px;
+  height: auto;
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .footer-links {
+    gap: 1.2rem;
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .footer {
+    padding: 5rem 2rem 1rem;
+  }
+
+  .footer-logo {
+    margin: 0;
+    padding: 0;
+  }
+}
+
+@media (min-width: 768px) {
+  .footer {
+    gap: 40px;
+    position: static;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+  }
 }
 
 @media (max-width: 800px) {
   .footer {
-    gap: 20px;
+    gap: 30px;
   }
 
   .footer-logo {
@@ -66,21 +120,9 @@
     align-items: center;
   }
 
-  .footer-logo img {
-    width: 70px;
-  }
-
-  .footer-logo p {
-    font-size: 25px;
-  }
-
   .footer-links {
     font-size: 14px;
     gap: 10px;
-  }
-
-  .footer-social-icon img {
-    width: 22px;
   }
 
   .footer-copyright {
@@ -88,13 +130,23 @@
   }
 }
 
-@media (width > 800px) {
+@media (min-width: 801px) {
   .footer-logo {
-    margin: 2rem 0 0;
+    margin: 0;
   }
 
   .footer-logo img {
     width: 90px;
     margin: 0;
+  }
+
+  .footer-copyright {
+    margin-bottom: 10px;
+  }
+}
+
+@media (width > 768px) {
+  .footer-icons-container a {
+    font-size: 2rem;
   }
 }

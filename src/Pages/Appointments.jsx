@@ -20,9 +20,6 @@ const Appointments = () => {
     e.preventDefault();
     console.log("Appointment Data:", formData);
     setSubmitted(true);
-
-    // Optionally send this data to backend/server here
-    // fetch("/api/appointments", {...})
   };
 
   return (

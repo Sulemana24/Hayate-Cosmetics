@@ -1,72 +1,83 @@
 .offers {
   display: flex;
-  width: 100%;
-  flex-direction: column-reverse;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 5rem;
-}
-
-.offers-right {
-  display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  margin: 2rem 2rem 0;
-}
-
-.offers-right h1 {
-  color: var(--text-dark);
-  font-size: 2rem;
-  font-weight: 500;
-  text-align: center;
-  margin-bottom: 1.5rem;
-  font-family: "Poppins", sans-serif;
-}
-
-.offers-right p {
-  color: var(--text-dark);
-  font-size: 18px;
-  font-weight: 400;
-  text-align: center;
-}
-
-.offers-right button {
-  width: 282px;
-  height: 70px;
-  border-radius: 35px;
-  margin-top: 30px;
-  background: var(--text-dark);
-  border: none;
-  cursor: pointer;
-  color: white;
-  font-size: 22px;
-  font-weight: 500;
-}
-
-.offers-right button:active {
-  background: var(--hover);
-}
-
-.offers-left {
-  display: flex;
   align-items: center;
   justify-content: center;
+  background: linear-gradient(to right, #fff4f4, #ffeaea);
+  border-radius: 1rem;
+  padding: 2rem;
+  gap: 2rem;
+  margin: 3rem 1rem;
+  text-align: center;
 }
 
 .offers-left img {
-  width: 50%;
+  width: 100%;
+  max-width: 400px;
+  border-radius: 1rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
 }
 
-@media (width > 768px) {
+.offers-right h1 {
+  font-size: clamp(1.8rem, 5vw, 2.5rem);
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 0.5rem;
+}
+
+.offers-right p {
+  font-size: 1rem;
+  color: var(--text-dark);
+  margin-bottom: 1rem;
+}
+
+.offers-right button {
+  background-color: var(--text-dark);
+  color: #fff;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 2rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.offers-right button:hover {
+  background-color: var(--hover);
+}
+
+.countdown-timer {
+  margin-top: 1rem;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+
+.countdown-timer span {
+  background-color: #ffeaea;
+  padding: 0.3rem 0.8rem;
+  border-radius: 0.5rem;
+  color: #e74c3c;
+  font-weight: bold;
+  margin-left: 0.5rem;
+}
+
+@media (min-width: 768px) {
   .offers {
     flex-direction: row;
-    box-shadow: 0 5px 5px rgba(0, 0, 0, 0.3);
-    padding: 2rem 0;
-    justify-content: space-between;
+    text-align: left;
+    padding: 3rem 4rem;
   }
 
-  .offers-right h1 {
-    font-size: 3rem;
+  .offers-right {
+    flex: 1;
+    padding-left: 2rem;
+  }
+
+  .offers-left {
+    flex: 1;
+    display: flex;
+    justify-content: center;
   }
 }

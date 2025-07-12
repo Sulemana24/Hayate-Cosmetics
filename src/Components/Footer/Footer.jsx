@@ -1,9 +1,13 @@
 import React from "react";
 import "./Footer.css";
 import footer_logo from "../Assets/comlogo.png";
-import instagram from "../Assets/instagram_icon.png";
+import { FaInstagram } from "react-icons/fa";
+import { FaTiktok } from "react-icons/fa6";
+import { IoLogoWhatsapp } from "react-icons/io";
+import { FaFacebookF } from "react-icons/fa";
+/* import instagram from "../Assets/instagram_icon.png";
 import pinterest from "../Assets/pintester_icon.png";
-import whatsapp from "../Assets/whatsapp_icon.png";
+import whatsapp from "../Assets/whatsapp_icon.png"; */
 import { Link } from "react-router-dom";
 
 const Footer = () => {
@@ -55,15 +59,15 @@ const Footer = () => {
             target="_blank"
             rel="noopener noreferrer"
           >
-            <img src={instagram} alt="Instagram" />
+            <FaInstagram />
           </a>
           <a
-            href="https://pinterest.com"
+            href="https://tiktok.com"
             aria-label="Pinterest"
             target="_blank"
             rel="noopener noreferrer"
           >
-            <img src={pinterest} alt="Pinterest" />
+            <FaTiktok />
           </a>
           <a
             href="https://wa.me/+233551333780"
@@ -71,15 +75,23 @@ const Footer = () => {
             target="_blank"
             rel="noopener noreferrer"
           >
-            <img src={whatsapp} alt="WhatsApp" />
+            <IoLogoWhatsapp />
+          </a>
+          <a
+            href="https://wa.me/+233551333780"
+            aria-label="WhatsApp"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <FaFacebookF />
           </a>
         </div>
       </div>
       <div className="footer-copyright">
         <hr />
-        <p>© {new Date().getFullYear()} Hayate - All rights reserved.</p>
-
-        <p>Terms of Service | Privacy Policy</p>
+        <p>
+          © {new Date().getFullYear()} Hayate Cosmetics - All rights reserved.
+        </p>
       </div>
     </div>
   );

@@ -21,7 +21,7 @@ const Navbar = () => {
           <div className="nav-logo">
             <img className="logo" src={logo} alt="" />
           </div>
-          <div class="nav-menu-btn" onClick={toggleMenu}>
+          <div className="nav-menu-btn" onClick={toggleMenu}>
             {isMenuOpen ? (
               <FiX size={28} color="#1b3c35" />
             ) : (
@@ -93,20 +93,34 @@ const Navbar = () => {
               style={{ textDecoration: "none", color: "#1b3c35" }}
               to="/appointments"
             >
-              Appointments
+              Appointment
             </Link>
             {menu === "appointments" ? <hr /> : <></>}
           </li>
           <div className="nav-login-cart">
-            <Link to="/login" onClick={() => setIsMenuOpen(false)}>
-              <button>login</button>
-            </Link>
-            <div className="nav-cart">
-              <Link to="/cart" onClick={() => setIsMenuOpen(false)}>
-                <img src={cartIcon} alt="" />
+            {localStorage.getItem("auth-token") ? (
+              <button
+                onClick={() => {
+                  localStorage.removeItem("auth-token");
+                  window.location.replace("/");
+                }}
+              >
+                Logout
+              </button>
+            ) : (
+              <Link to="/login" onClick={() => setIsMenuOpen(false)}>
+                <button>Login</button>
               </Link>
-              <div className="nav-cart-count">{getTotalCartItems()}</div>
-            </div>
+            )}
+
+            {localStorage.getItem("auth-token") ? (
+              <div className="nav-cart">
+                <Link to="/cart" onClick={() => setIsMenuOpen(false)}>
+                  <img src={cartIcon} alt="" />
+                </Link>
+                <div className="nav-cart-count">{getTotalCartItems()}</div>
+              </div>
+            ) : null}
           </div>
         </ul>
       </nav>

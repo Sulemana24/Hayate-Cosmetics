@@ -11,11 +11,6 @@ nav {
   z-index: 9;
 }
 
-/* .nav {
-  background-color: var(--primary-color);
-  width: 100%;
-} */
-
 .navbar {
   padding: 1rem 2rem;
   width: 100%;
