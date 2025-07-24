@@ -1,0 +1,152 @@
+.footer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 30px;
+  color: var(--text-dark);
+  margin-top: 4rem;
+  padding: 0 1rem;
+}
+
+.footer-logo {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-color);
+  border-radius: 5px;
+}
+
+.footer-links {
+  display: flex;
+  list-style: none;
+  gap: 50px;
+  font-size: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  text-align: center;
+}
+
+.footer-links li {
+  cursor: pointer;
+}
+
+.footer-icons-container {
+  padding: 10px;
+  background: var(--primary-color);
+  border: 1px solid #ebebeb;
+  border-radius: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+}
+
+.footer-icons-container a {
+  color: var(--text-dark);
+  text-decoration: none;
+  transition: transform 0.2s ease;
+}
+
+.footer-icons-container a:hover {
+  color: #fff;
+  transform: scale(1.1);
+}
+
+.footer-copyright {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+  width: 100%;
+  margin-bottom: 30px;
+  font-size: 20px;
+}
+
+.footer-copyright hr {
+  width: 80%;
+  border: none;
+  border-radius: 10px;
+  height: 3px;
+  background: var(--text-dark);
+}
+
+.footer-links li:hover {
+  text-decoration: underline;
+}
+
+.footer-logo img {
+  width: 80px;
+  height: auto;
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .footer-links {
+    gap: 1.2rem;
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .footer {
+    padding: 5rem 2rem 1rem;
+  }
+
+  .footer-logo {
+    margin: 0;
+    padding: 0;
+  }
+}
+
+@media (min-width: 768px) {
+  .footer {
+    gap: 40px;
+    position: static;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 800px) {
+  .footer {
+    gap: 30px;
+  }
+
+  .footer-logo {
+    gap: 10px;
+    align-items: center;
+  }
+
+  .footer-links {
+    font-size: 14px;
+    gap: 10px;
+  }
+
+  .footer-copyright {
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 801px) {
+  .footer-logo {
+    margin: 0;
+  }
+
+  .footer-logo img {
+    width: 90px;
+    margin: 0;
+  }
+
+  .footer-copyright {
+    margin-bottom: 10px;
+  }
+}
+
+@media (width > 768px) {
+  .footer-icons-container a {
+    font-size: 2rem;
+  }
+}

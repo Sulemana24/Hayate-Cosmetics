@@ -1,0 +1,212 @@
+.hero {
+  height: 70vh;
+  background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.4)),
+    url("../Assets/hero-image.jpg");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 2rem;
+  color: #fff;
+  text-align: center;
+  transition: background 0.3s ease;
+}
+
+.hero-content {
+  max-width: 700px;
+}
+
+.hero-content h1 {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.hero-content p {
+  font-size: 1rem;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.hero-buttons button {
+  text-decoration: none;
+  padding: 0.8rem 1.8rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+  background-color: var(--text-dark);
+  color: var(--extra-light);
+  transition: all 0.3s ease;
+}
+
+.hero-buttons button:hover {
+  transform: scale(1.05);
+}
+
+@media (width >= 768px) {
+  .hero {
+    height: 75vh;
+  }
+
+  .hero-content h1 {
+    font-size: 3.7rem;
+  }
+
+  .hero-content p {
+    font-size: 1.5rem;
+  }
+
+  .hero-buttons button {
+    padding: 1.5rem 2.5rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+    border-radius: 50px;
+  }
+}
+
+@media (width > 1024px) {
+  .hero {
+    height: 100vh;
+  }
+
+  .hero-content p {
+    font-size: 1.5rem;
+  }
+
+  .hero-buttons button {
+    padding: 1rem 1.5rem;
+    font-size: 1.5rem;
+    border-radius: 70px;
+  }
+}
+
+/* .hero {
+  background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.4)),
+    url("../Assets/hero-image.jpg");
+  height: 60vh;
+  color: var(--extra-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 20px;
+}
+.hero-content h1 {
+  font-size: 3.5rem;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--extra-light);
+}
+
+.hero-content p {
+  font-size: 1.1rem;
+  margin: 0 2rem 10px;
+  line-height: 1.6;
+  color: var(--extra-light);
+}
+
+.hero-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+}
+
+.hero-buttons button {
+  text-decoration: none;
+  padding: 10px 15px;
+  font-size: 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  background-color: var(--text-dark);
+  color: var(--extra-light);
+  transition: all 0.3s ease;
+}
+
+.hero-buttons button:hover {
+  transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+  .hero-content h1 {
+    font-size: 2rem;
+  }
+
+  .hero-content p {
+    font-size: 12px;
+  }
+
+  .hero-buttons button {
+    font-size: 0.9rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .hero {
+    height: 50vh;
+  }
+
+  .hero-content h1 {
+    font-size: 2rem;
+  }
+
+  .hero-content p {
+    font-size: 1rem;
+  }
+
+  .hero-buttons button {
+    font-size: 0.9rem;
+  }
+}
+
+@media (width > 768px) {
+  .hero {
+    height: 40vh;
+  }
+}
+
+@media (max-width: 1024px) {
+  .hero {
+    height: 30vh;
+  }
+}
+
+@media (width > 1024px) {
+  .hero {
+    height: 50vh;
+  }
+
+  .hero-content h1 {
+    font-size: 3rem;
+  }
+
+  .hero-content p {
+    font-size: 1rem;
+  }
+
+  .hero-buttons button {
+    padding: 20px;
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 412px) {
+  .hero {
+    height: 50vh;
+  }
+}
+ */
