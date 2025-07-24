@@ -1,0 +1,17 @@
+:root {
+  --primary-color: #e39a89;
+  --text-dark: #1b3c35;
+  --text-light: #9ca3af;
+  --extra-light: #f3f4f6;
+  --white: #fff;
+  --max-width: 1200px;
+  --top-deals: #f5dbd6;
+  --hover: #2b5f54;
+}
+
+body {
+  margin: 0;
+  font-family: "Poppins", sans-serif;
+  background-color: #f6f6f6;
+  height: 100vh;
+}
