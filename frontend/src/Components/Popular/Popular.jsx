@@ -8,7 +8,7 @@ const Popular = () => {
   const timerRef = useRef(null);
 
   useEffect(() => {
-    fetch("http://localhost:4000/popular")
+    fetch("https://hayate-cosmetics-1.onrender.com/popular")
       .then((response) => response.json())
       .then((data) => setPopularProducts(data));
   }, []);
