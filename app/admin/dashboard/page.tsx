@@ -1,5 +1,7 @@
-import AdminLayout from "@/components/admin/AdminLayout";
+"use client";
 
+import { useState, useEffect } from "react";
+import AdminLayout from "@/components/admin/AdminLayout";
 import {
   FiShoppingBag,
   FiDollarSign,
@@ -13,18 +15,63 @@ import {
   FiArrowDown,
 } from "react-icons/fi";
 import { MdOutlineInventory, MdOutlineLocalShipping } from "react-icons/md";
+import { db } from "@/lib/firebase";
+import {
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  Timestamp,
+  where,
+} from "firebase/firestore";
+
+interface Product {
+  id: string;
+  name: string;
+  originalPrice: number;
+  discountedPrice: number;
+  category: string;
+  quantity: number;
+  status: "In Stock" | "Low Stock" | "Out of Stock";
+  createdAt: Timestamp;
+}
+
+interface Order {
+  id: string;
+  amount: number;
+  status: string;
+  createdAt: Timestamp;
+}
+
+interface DashboardStats {
+  totalProducts: number;
+  inStockProducts: number;
+  lowStockProducts: number;
+  outOfStockProducts: number;
+  totalOrders: number;
+  totalRevenue: number;
+  totalCustomers: number;
+  inventoryItems: number;
+  pendingOrders: number;
+  conversionRate: number;
+  averageOrderValue: number;
+}
 
 export default function AdminDashboardPage() {
-  const metrics = {
-    totalProducts: 156,
-    totalOrders: 324,
-    totalRevenue: 24580.5,
-    totalCustomers: 89,
-    inventoryItems: 456,
-    pendingOrders: 12,
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalProducts: 0,
+    inStockProducts: 0,
+    lowStockProducts: 0,
+    outOfStockProducts: 0,
+    totalOrders: 0,
+    totalRevenue: 0,
+    totalCustomers: 89, // You might want to fetch this from Firebase too
+    inventoryItems: 0,
+    pendingOrders: 0,
     conversionRate: 3.2,
-    averageOrderValue: 75.86,
-  };
+    averageOrderValue: 0,
+  });
 
   const recentOrders = [
     {
@@ -72,14 +119,155 @@ export default function AdminDashboardPage() {
     { name: "Yoga Mat", sales: 25, revenue: "₵1,250", stock: 16 },
   ];
 
+  // Fetch dashboard statistics
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch products
+        const productsQuery = query(
+          collection(db, "products"),
+          orderBy("createdAt", "desc")
+        );
+        const productsSnapshot = await getDocs(productsQuery);
+        const products = productsSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Product[];
+
+        // Calculate product statistics
+        const totalProducts = products.length;
+        const inStockProducts = products.filter(
+          (p) => p.status === "In Stock"
+        ).length;
+        const lowStockProducts = products.filter(
+          (p) => p.status === "Low Stock"
+        ).length;
+        const outOfStockProducts = products.filter(
+          (p) => p.status === "Out of Stock"
+        ).length;
+
+        // Calculate total inventory items
+        const inventoryItems = products.reduce(
+          (sum, product) => sum + product.quantity,
+          0
+        );
+
+        // Fetch orders (you need to create an orders collection in Firebase)
+        // For now, using mock data for orders
+        // const ordersQuery = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+        // const ordersSnapshot = await getDocs(ordersQuery);
+        // const orders = ordersSnapshot.docs.map(doc => ({
+        //   id: doc.id,
+        //   ...doc.data()
+        // })) as Order[];
+
+        // Mock order data for now - replace with actual Firebase query
+        const mockOrders = [
+          {
+            id: "1",
+            amount: 245.99,
+            status: "delivered",
+            createdAt: Timestamp.now(),
+          },
+          {
+            id: "2",
+            amount: 129.5,
+            status: "processing",
+            createdAt: Timestamp.now(),
+          },
+          {
+            id: "3",
+            amount: 89.99,
+            status: "pending",
+            createdAt: Timestamp.now(),
+          },
+          {
+            id: "4",
+            amount: 345.75,
+            status: "delivered",
+            createdAt: Timestamp.now(),
+          },
+          {
+            id: "5",
+            amount: 67.25,
+            status: "shipped",
+            createdAt: Timestamp.now(),
+          },
+        ];
+
+        const totalOrders = mockOrders.length;
+        const totalRevenue = mockOrders.reduce(
+          (sum, order) => sum + order.amount,
+          0
+        );
+        const pendingOrders = mockOrders.filter(
+          (o) => o.status === "pending" || o.status === "processing"
+        ).length;
+        const averageOrderValue =
+          totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+        setStats({
+          totalProducts,
+          inStockProducts,
+          lowStockProducts,
+          outOfStockProducts,
+          totalOrders,
+          totalRevenue,
+          totalCustomers: 89, // You can fetch this from Firebase users collection
+          inventoryItems,
+          pendingOrders,
+          conversionRate: 3.2, // You might want to calculate this based on analytics
+          averageOrderValue,
+        });
+      } catch (error) {
+        console.error("Error fetching dashboard stats:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardStats();
+  }, []);
+
+  // Calculate percentage changes (you can make these dynamic too)
+  const calculatePercentageChange = (current: number, previous: number) => {
+    if (previous === 0) return 100;
+    return ((current - previous) / previous) * 100;
+  };
+
+  // Mock previous month data - you can fetch this from Firebase too
+  const previousMonthStats = {
+    totalProducts: 140,
+    totalOrders: 300,
+    totalRevenue: 22000,
+    totalCustomers: 85,
+  };
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="flex-1 flex items-center justify-center min-h-[calc(100vh-4rem)]">
+          <div className="text-center">
+            <div className="w-16 h-16 mx-auto mb-4 border-4 border-[#e39a89] border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-gray-600 dark:text-gray-400">
+              Loading dashboard...
+            </p>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
   return (
     <AdminLayout>
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[#1b3c35] mb-2">
+        <h1 className="text-2xl font-bold text-black mb-2">
           Dashboard Overview
         </h1>
-        <p className="text-gray-500">
+        <p className="text-gray-600 ">
           Welcome back! Here&apos;s what&apos;s happening with your store today.
         </p>
       </div>
@@ -94,14 +282,22 @@ export default function AdminDashboardPage() {
             </div>
             <span className="text-sm font-medium text-green-600 dark:text-green-400 flex items-center">
               <FiArrowUp className="w-3 h-3 mr-1" />
-              12.5%
+              {calculatePercentageChange(
+                stats.totalRevenue,
+                previousMonthStats.totalRevenue
+              ).toFixed(1)}
+              %
             </span>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
             Total Revenue
           </p>
           <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
-            ₵{metrics.totalRevenue.toLocaleString()}
+            ₵
+            {stats.totalRevenue.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Last 30 days
@@ -116,21 +312,25 @@ export default function AdminDashboardPage() {
             </div>
             <span className="text-sm font-medium text-green-600 dark:text-green-400 flex items-center">
               <FiArrowUp className="w-3 h-3 mr-1" />
-              8.3%
+              {calculatePercentageChange(
+                stats.totalOrders,
+                previousMonthStats.totalOrders
+              ).toFixed(1)}
+              %
             </span>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
             Total Orders
           </p>
           <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
-            {metrics.totalOrders}
+            {stats.totalOrders}
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {metrics.pendingOrders} pending
+            {stats.pendingOrders} pending
           </p>
         </div>
 
-        {/* Products Card */}
+        {/* Products Card - Now with real data */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-900/20">
@@ -138,17 +338,21 @@ export default function AdminDashboardPage() {
             </div>
             <span className="text-sm font-medium text-green-600 dark:text-green-400 flex items-center">
               <FiArrowUp className="w-3 h-3 mr-1" />
-              5.2%
+              {calculatePercentageChange(
+                stats.totalProducts,
+                previousMonthStats.totalProducts
+              ).toFixed(1)}
+              %
             </span>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
             Total Products
           </p>
           <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
-            {metrics.totalProducts}
+            {stats.totalProducts}
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {metrics.inventoryItems} in inventory
+            {stats.inStockProducts} in stock • {stats.lowStockProducts} low
           </p>
         </div>
 
@@ -158,16 +362,38 @@ export default function AdminDashboardPage() {
             <div className="p-3 rounded-xl bg-green-50 dark:bg-green-900/20">
               <FiUsers className="w-6 h-6 text-green-600 dark:text-green-400" />
             </div>
-            <span className="text-sm font-medium text-red-600 dark:text-red-400 flex items-center">
-              <FiArrowDown className="w-3 h-3 mr-1" />
-              2.1%
+            <span
+              className={`text-sm font-medium flex items-center ${
+                calculatePercentageChange(
+                  stats.totalCustomers,
+                  previousMonthStats.totalCustomers
+                ) >= 0
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-red-600 dark:text-red-400"
+              }`}
+            >
+              {calculatePercentageChange(
+                stats.totalCustomers,
+                previousMonthStats.totalCustomers
+              ) >= 0 ? (
+                <FiArrowUp className="w-3 h-3 mr-1" />
+              ) : (
+                <FiArrowDown className="w-3 h-3 mr-1" />
+              )}
+              {Math.abs(
+                calculatePercentageChange(
+                  stats.totalCustomers,
+                  previousMonthStats.totalCustomers
+                )
+              ).toFixed(1)}
+              %
             </span>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
             Total Customers
           </p>
           <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
-            {metrics.totalCustomers}
+            {stats.totalCustomers}
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400">
             New this month: 12
@@ -177,27 +403,83 @@ export default function AdminDashboardPage() {
 
       {/* Second Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Conversion Rate */}
+        {/* Product Status Breakdown */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20">
               <FiTrendingUp className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
             </div>
             <span className="text-sm font-medium text-green-600 dark:text-green-400">
-              +0.8%
+              Product Status
             </span>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-            Conversion Rate
+            Inventory Overview
           </p>
-          <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
-            {metrics.conversionRate}%
-          </h3>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
-            <div
-              className="bg-gradient-to-r from-[#e39a89] to-[#d87a6a] h-2 rounded-full"
-              style={{ width: `${metrics.conversionRate * 10}%` }}
-            />
+
+          <div className="space-y-3 mt-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                In Stock
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">
+                  {stats.inStockProducts}
+                </span>
+                <div className="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div
+                    className="bg-green-500 h-2 rounded-full"
+                    style={{
+                      width: `${
+                        (stats.inStockProducts / stats.totalProducts) * 100
+                      }%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Low Stock
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">
+                  {stats.lowStockProducts}
+                </span>
+                <div className="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div
+                    className="bg-yellow-500 h-2 rounded-full"
+                    style={{
+                      width: `${
+                        (stats.lowStockProducts / stats.totalProducts) * 100
+                      }%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Out of Stock
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">
+                  {stats.outOfStockProducts}
+                </span>
+                <div className="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div
+                    className="bg-red-500 h-2 rounded-full"
+                    style={{
+                      width: `${
+                        (stats.outOfStockProducts / stats.totalProducts) * 100
+                      }%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -208,17 +490,20 @@ export default function AdminDashboardPage() {
               <FiActivity className="w-6 h-6 text-amber-600 dark:text-amber-400" />
             </div>
             <span className="text-sm font-medium text-green-600 dark:text-green-400">
-              +₵5.20
+              {stats.averageOrderValue > 75.86 ? "+" : ""}₵
+              {(stats.averageOrderValue - 75.86).toFixed(2)}
             </span>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
             Avg. Order Value
           </p>
           <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
-            ₵{metrics.averageOrderValue}
+            ₵{stats.averageOrderValue.toFixed(2)}
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Increased from last month
+            {stats.averageOrderValue > 75.86
+              ? "Increased from last month"
+              : "Decreased from last month"}
           </p>
         </div>
 
@@ -228,18 +513,28 @@ export default function AdminDashboardPage() {
             <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20">
               <MdOutlineInventory className="w-6 h-6 text-red-600 dark:text-red-400" />
             </div>
-            <span className="text-sm font-medium text-red-600 dark:text-red-400">
-              5 items low
+            <span
+              className={`text-sm font-medium ${
+                stats.lowStockProducts > 0
+                  ? "text-red-600 dark:text-red-400"
+                  : "text-green-600 dark:text-green-400"
+              }`}
+            >
+              {stats.lowStockProducts} item
+              {stats.lowStockProducts !== 1 ? "s" : ""}{" "}
+              {stats.lowStockProducts > 0 ? "low" : "all good"}
             </span>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
             Inventory Status
           </p>
           <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
-            {metrics.inventoryItems}
+            {stats.inventoryItems}
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            5 items need restocking
+            {stats.lowStockProducts} item
+            {stats.lowStockProducts !== 1 ? "s" : ""} need
+            {stats.lowStockProducts === 1 ? "s" : ""} restocking
           </p>
         </div>
       </div>
@@ -366,9 +661,14 @@ export default function AdminDashboardPage() {
         </div>
         <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4 text-center">
           <FiTrendingUp className="w-5 h-5 text-green-600 dark:text-green-400 mx-auto mb-2" />
-          <p className="text-sm text-black">Growth</p>
+          <p className="text-sm text-black">Product Growth</p>
           <p className="text-lg font-bold text-gray-800 dark:text-white">
-            +12.5%
+            +
+            {calculatePercentageChange(
+              stats.totalProducts,
+              previousMonthStats.totalProducts
+            ).toFixed(1)}
+            %
           </p>
         </div>
         <div className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-4 text-center">
