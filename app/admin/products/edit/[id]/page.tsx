@@ -1,0 +1,566 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
+import {
+  FiArrowLeft,
+  FiSave,
+  FiUpload,
+  FiCamera,
+  FiX,
+  FiDollarSign,
+  FiPercent,
+  FiTag,
+} from "react-icons/fi";
+import { MdOutlineCategory, MdOutlineInventory } from "react-icons/md";
+
+import { db } from "@/lib/firebase";
+import { doc, getDoc, updateDoc, Timestamp } from "firebase/firestore";
+
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  originalPrice: number;
+  discountedPrice: number;
+  category: string;
+  quantity: number;
+  status: "In Stock" | "Low Stock" | "Out of Stock";
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export default function EditProductPage() {
+  const router = useRouter();
+  const params = useParams();
+  const productId = params.id as string;
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string>("");
+
+  const [productForm, setProductForm] = useState({
+    name: "",
+    description: "",
+    originalPrice: "",
+    discountedPrice: "",
+    category: "",
+    quantity: "",
+    status: "In Stock" as "In Stock" | "Low Stock" | "Out of Stock",
+  });
+
+  const productCategories = ["Cosmetics", "Fragrance", "Accessories"];
+  const statusOptions = ["In Stock", "Low Stock", "Out of Stock"];
+
+  // Fetch product data
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const docRef = doc(db, "products", productId);
+        const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists()) {
+          alert("Product not found");
+          router.push("/admin/products");
+          return;
+        }
+
+        const productData = docSnap.data() as Product;
+
+        setProductForm({
+          name: productData.name,
+          description: productData.description,
+          originalPrice: productData.originalPrice.toString(),
+          discountedPrice: productData.discountedPrice.toString(),
+          category: productData.category,
+          quantity: productData.quantity.toString(),
+          status: productData.status,
+        });
+      } catch (error) {
+        console.error("Error fetching product:", error);
+        alert("Failed to load product data");
+        router.push("/admin/products");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (productId) {
+      fetchProduct();
+    }
+  }, [productId, router]);
+
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    const { name, value } = e.target;
+    setProductForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("Please upload an image file");
+      return;
+    }
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleUploadClick = () => fileInputRef.current?.click();
+  const removeImage = () => {
+    setImagePreview("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const calculateDiscount = () => {
+    const original = parseFloat(productForm.originalPrice) || 0;
+    const discounted = parseFloat(productForm.discountedPrice) || 0;
+    if (original > 0 && discounted > 0) {
+      return Math.round(((original - discounted) / original) * 100);
+    }
+    return 0;
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "In Stock":
+        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
+      case "Low Stock":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
+      case "Out of Stock":
+        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+
+    try {
+      const productData = {
+        name: productForm.name.trim(),
+        description: productForm.description.trim(),
+        originalPrice: parseFloat(productForm.originalPrice),
+        discountedPrice: parseFloat(productForm.discountedPrice),
+        category: productForm.category,
+        quantity: parseInt(productForm.quantity),
+        status: productForm.status,
+        updatedAt: Timestamp.now(),
+      };
+
+      // Validate data
+      if (productData.discountedPrice > productData.originalPrice) {
+        alert("Discounted price cannot be higher than original price");
+        setSaving(false);
+        return;
+      }
+
+      if (productData.quantity < 0) {
+        alert("Quantity cannot be negative");
+        setSaving(false);
+        return;
+      }
+
+      const docRef = doc(db, "products", productId);
+      await updateDoc(docRef, productData);
+
+      alert("Product updated successfully!");
+      router.push("/admin/products");
+      router.refresh();
+    } catch (error) {
+      console.error("Error updating product:", error);
+      alert("Failed to update product. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 border-4 border-[#e39a89] border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-600 dark:text-gray-400">
+            Loading product data...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 md:p-6 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Link
+              href="/admin/products"
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+            >
+              <FiArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-[#1b3c35] dark:text-white">
+                Edit Product
+              </h1>
+              <p className="text-gray-500 dark:text-gray-400">
+                Update the product details below
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Form */}
+      <form onSubmit={handleSubmit}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left Column */}
+          <div className="space-y-6">
+            {/* Product Name */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-[#1b3c35] dark:text-white mb-4">
+                Basic Information
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Product Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    value={productForm.name}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#e39a89]/20 focus:border-[#e39a89] dark:focus:border-[#1b3c35] outline-none transition-all duration-200"
+                    placeholder="Enter product name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Description *
+                  </label>
+                  <textarea
+                    name="description"
+                    required
+                    value={productForm.description}
+                    onChange={handleInputChange}
+                    rows={4}
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#e39a89]/20 focus:border-[#e39a89] dark:focus:border-[#1b3c35] outline-none transition-all duration-200 resize-none"
+                    placeholder="Enter product description"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Category *
+                  </label>
+                  <div className="relative">
+                    <select
+                      name="category"
+                      required
+                      value={productForm.category}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#e39a89]/20 focus:border-[#e39a89] dark:focus:border-[#1b3c35] outline-none transition-all duration-200 appearance-none"
+                    >
+                      <option value="">Select category</option>
+                      {productCategories.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                    <MdOutlineCategory className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Image Upload */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-[#1b3c35] dark:text-white mb-4">
+                Product Image
+              </h3>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageUpload}
+                accept="image/*"
+                className="hidden"
+              />
+
+              {imagePreview ? (
+                <div className="relative">
+                  <div className="w-full h-64 rounded-xl overflow-hidden bg-gradient-to-r from-[#e39a89]/10 to-[#d87a6a]/10">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="absolute top-4 right-4 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleUploadClick}
+                      className="p-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg hover:bg-white dark:hover:bg-gray-800 transition-colors duration-200"
+                      title="Change image"
+                    >
+                      <FiCamera className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="p-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg hover:bg-white dark:hover:bg-gray-800 transition-colors duration-200"
+                      title="Remove image"
+                    >
+                      <FiX className="w-4 h-4 text-red-600" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={handleUploadClick}
+                  className="w-full h-64 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-[#e39a89] dark:hover:border-[#1b3c35] transition-colors duration-200 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <div className="p-4 rounded-full bg-gradient-to-r from-[#e39a89]/10 to-[#d87a6a]/10 mb-3">
+                    <FiUpload className="w-8 h-8 text-[#e39a89]" />
+                  </div>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Click to upload product image
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    PNG, JPG, GIF up to 5MB
+                  </p>
+                </div>
+              )}
+
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
+                Leave empty to use default product image
+              </p>
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="space-y-6">
+            {/* Pricing */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-[#1b3c35] dark:text-white mb-4 flex items-center gap-2">
+                <FiDollarSign className="w-5 h-5" />
+                Pricing
+              </h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Original Price *
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
+                        ₵
+                      </span>
+                      <input
+                        type="number"
+                        name="originalPrice"
+                        required
+                        min="0"
+                        step="0.01"
+                        value={productForm.originalPrice}
+                        onChange={handleInputChange}
+                        className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#e39a89]/20 focus:border-[#e39a89] dark:focus:border-[#1b3c35] outline-none transition-all duration-200"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Discounted Price *
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
+                        ₵
+                      </span>
+                      <input
+                        type="number"
+                        name="discountedPrice"
+                        required
+                        min="0"
+                        step="0.01"
+                        value={productForm.discountedPrice}
+                        onChange={handleInputChange}
+                        className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#e39a89]/20 focus:border-[#e39a89] dark:focus:border-[#1b3c35] outline-none transition-all duration-200"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Discount Percentage */}
+                {productForm.originalPrice && productForm.discountedPrice && (
+                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-[#e39a89]/5 to-[#d87a6a]/5 dark:from-[#1b3c35]/10 dark:to-[#2a4d45]/10 rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <FiPercent className="w-4 h-4 text-[#e39a89]" />
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                        Discount Applied
+                      </span>
+                    </div>
+                    <span className="text-sm font-bold text-green-600">
+                      {calculateDiscount()}% OFF
+                    </span>
+                  </div>
+                )}
+
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  * Discounted price must be lower than or equal to original
+                  price
+                </div>
+              </div>
+            </div>
+
+            {/* Inventory */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-[#1b3c35] dark:text-white mb-4 flex items-center gap-2">
+                <MdOutlineInventory className="w-5 h-5" />
+                Inventory
+              </h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Quantity *
+                    </label>
+                    <input
+                      type="number"
+                      name="quantity"
+                      required
+                      min="0"
+                      value={productForm.quantity}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#e39a89]/20 focus:border-[#e39a89] dark:focus:border-[#1b3c35] outline-none transition-all duration-200"
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Status *
+                    </label>
+                    <select
+                      name="status"
+                      required
+                      value={productForm.status}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#e39a89]/20 focus:border-[#e39a89] dark:focus:border-[#1b3c35] outline-none transition-all duration-200"
+                    >
+                      {statusOptions.map((status) => (
+                        <option key={status} value={status}>
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Preview */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-[#1b3c35] dark:text-white mb-4">
+                Product Preview
+              </h3>
+              <div className="bg-gradient-to-r from-[#e39a89]/5 to-[#d87a6a]/5 dark:from-[#1b3c35]/10 dark:to-[#2a4d45]/10 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-lg bg-gradient-to-r from-[#e39a89]/20 to-[#d87a6a]/20 flex items-center justify-center overflow-hidden">
+                    {imagePreview ? (
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <FiTag className="w-6 h-6 text-[#e39a89]" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-lg font-semibold text-gray-800 dark:text-white truncate">
+                      {productForm.name || "Product Name"}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                      {productForm.description ||
+                        "Product description will appear here"}
+                    </p>
+                    <div className="flex items-center gap-3 mt-2">
+                      <div className="flex items-center gap-1">
+                        {productForm.originalPrice && (
+                          <span className="text-sm text-gray-400 line-through">
+                            ₵{parseFloat(productForm.originalPrice).toFixed(2)}
+                          </span>
+                        )}
+                        {productForm.discountedPrice && (
+                          <span className="text-lg font-bold text-[#e39a89]">
+                            ₵
+                            {parseFloat(productForm.discountedPrice).toFixed(2)}
+                          </span>
+                        )}
+                        {calculateDiscount() > 0 && (
+                          <span className="text-xs font-bold text-green-600 bg-green-50 dark:bg-green-900/30 px-2 py-1 rounded">
+                            -{calculateDiscount()}%
+                          </span>
+                        )}
+                      </div>
+                      {productForm.status && (
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                            productForm.status
+                          )}`}
+                        >
+                          {productForm.status}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex gap-4">
+              <Link
+                href="/admin/products"
+                className="flex-1 px-6 py-3.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 text-center"
+              >
+                Cancel
+              </Link>
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex-1 px-6 py-3.5 bg-gradient-to-r from-[#e39a89] to-[#d87a6a] hover:from-[#d87a6a] hover:to-[#c86a5a] text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Updating Product...
+                  </>
+                ) : (
+                  <>
+                    <FiSave className="w-4 h-4" />
+                    Update Product
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}
