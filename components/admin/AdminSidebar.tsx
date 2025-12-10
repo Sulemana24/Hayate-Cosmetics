@@ -13,11 +13,10 @@ import { FiShoppingCart, FiChevronLeft, FiX } from "react-icons/fi";
 import { MdOutlineSpaceDashboard, MdOutlineAnalytics } from "react-icons/md";
 import { useState, useEffect } from "react";
 
-// Simplified links - removed less important ones for cleaner look
 const mainLinks = [
   {
     name: "Dashboard",
-    href: "/admin/dashboar",
+    href: "/admin/dashboard",
     icon: MdOutlineSpaceDashboard,
   },
   {
@@ -84,9 +83,24 @@ export default function AdminSidebar() {
 
   const closeSidebar = () => {
     setIsMobileOpen(false);
+
     window.dispatchEvent(
       new CustomEvent("sidebar-closed", {
         detail: { isOpen: false },
+      })
+    );
+    window.dispatchEvent(
+      new CustomEvent("sidebar-state-change", {
+        detail: { isOpen: false },
+      })
+    );
+  };
+
+  const openSidebar = () => {
+    setIsMobileOpen(true);
+    window.dispatchEvent(
+      new CustomEvent("sidebar-state-change", {
+        detail: { isOpen: true },
       })
     );
   };
@@ -96,7 +110,11 @@ export default function AdminSidebar() {
     const handleToggleSidebar = (event: CustomEvent) => {
       const { isOpen } = event.detail;
       if (isMobile) {
-        setIsMobileOpen(isOpen);
+        if (isOpen) {
+          openSidebar();
+        } else {
+          closeSidebar();
+        }
       }
     };
 

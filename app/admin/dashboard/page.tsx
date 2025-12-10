@@ -1,5 +1,4 @@
 import AdminLayout from "@/components/admin/AdminLayout";
-import ProtectedAdmin from "@/components/admin/ProtectedAdmin";
 
 import {
   FiShoppingBag,
