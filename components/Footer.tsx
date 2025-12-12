@@ -1,19 +1,14 @@
 import Link from "next/link";
 import Image from "next/image";
 import {
-  FiFacebook,
   FiInstagram,
   FiTwitter,
   FiYoutube,
   FiMail,
   FiPhone,
   FiMapPin,
-  FiCreditCard,
-  FiTruck,
-  FiShield,
-  FiRefreshCw,
 } from "react-icons/fi";
-import { FaTiktok, FaPinterestP } from "react-icons/fa";
+import { FaTiktok, FaWhatsapp } from "react-icons/fa";
 
 // Logo import - update with your actual logo
 import Logo from "@/public/images/comlogo.png";
@@ -235,26 +230,19 @@ export default function ClientFooter() {
 
             {/* Social Links */}
             <div className="lg:text-right">
-              <h3 className="text-2xl font-bold mb-6">Follow Our Journey</h3>
               <div className="flex flex-wrap gap-4 justify-center lg:justify-end">
                 <a
                   href="#"
                   className="w-12 h-12 rounded-full bg-white/10 hover:bg-[#e39a89] flex items-center justify-center transition-all duration-300 group"
                   aria-label="Instagram"
                 >
-                  <FiInstagram className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  <FaWhatsapp className="w-5 h-5 group-hover:scale-110 transition-transform" />
                 </a>
                 <a
-                  href="#"
-                  className="w-12 h-12 rounded-full bg-white/10 hover:bg-[#e39a89] flex items-center justify-center transition-all duration-300 group"
-                  aria-label="Facebook"
-                >
-                  <FiFacebook className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                </a>
-                <a
-                  href="#"
+                  href="https://www.tiktok.com/@queen.hayate?_r=1&_t=ZM-92AAnaEEMxw"
                   className="w-12 h-12 rounded-full bg-white/10 hover:bg-[#e39a89] flex items-center justify-center transition-all duration-300 group"
                   aria-label="TikTok"
+                  target="_blank"
                 >
                   <FaTiktok className="w-5 h-5 group-hover:scale-110 transition-transform" />
                 </a>
