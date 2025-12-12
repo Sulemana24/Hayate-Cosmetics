@@ -1,4 +1,6 @@
 import ClientNavbar from "@/components/Navbar";
+import HeroSection from "@/components/Hero";
+
 import Footer from "@/components/Footer";
 import BackToTop from "@/components/BackToTopButton";
 import ProductsGrid from "@/components/ProductGrid";
@@ -7,6 +9,7 @@ export default function Home() {
   return (
     <div className="">
       <ClientNavbar />
+      <HeroSection />
 
       <section className="py-16">
         <div className="container mx-auto px-4">
@@ -15,7 +18,7 @@ export default function Home() {
               Featured Products
             </h2>
             <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-              Discover our curated selection of premium beauty products
+              Discover our curated selection of premium beauty
             </p>
           </div>
           <ProductsGrid limitCount={8} showFilters={false} />
