@@ -604,7 +604,7 @@ export default function ConsultationsPage() {
                           ? "border-red-300 dark:border-red-700"
                           : "border-gray-200 dark:border-gray-600"
                       }`}
-                      placeholder="John Doe"
+                      placeholder="Enter your full name"
                     />
                     {formErrors.name && (
                       <p className="mt-2 text-sm text-red-600 dark:text-red-400">
@@ -628,7 +628,7 @@ export default function ConsultationsPage() {
                           ? "border-red-300 dark:border-red-700"
                           : "border-gray-200 dark:border-gray-600"
                       }`}
-                      placeholder="you@example.com"
+                      placeholder="Enter your email address"
                     />
                     {formErrors.email && (
                       <p className="mt-2 text-sm text-red-600 dark:text-red-400">
