@@ -85,15 +85,9 @@ const consultationTypes: ConsultationPlan[] = [
       "Routine plan",
     ],
   },
+
   {
     id: "2",
-    title: "Makeup Consultation",
-    duration: "45 min",
-    price: 49,
-    features: ["Color matching", "Technique guidance", "Product trial"],
-  },
-  {
-    id: "3",
     title: "Comprehensive Beauty Plan",
     duration: "60 min",
     price: 79,

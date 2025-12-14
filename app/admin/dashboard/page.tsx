@@ -215,10 +215,11 @@ export default function AdminDashboardPage() {
           outOfStockProducts,
           totalOrders,
           totalRevenue,
-          totalCustomers: 89, // You can fetch this from Firebase users collection
+          totalCustomers: 89,
+
           inventoryItems,
           pendingOrders,
-          conversionRate: 3.2, // You might want to calculate this based on analytics
+          conversionRate: 3.2,
           averageOrderValue,
         });
       } catch (error) {
@@ -264,10 +265,10 @@ export default function AdminDashboardPage() {
     <AdminLayout>
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-black mb-2">
+        <h1 className="text-2xl font-bold text-[#1b3c35] dark:text-white mb-2">
           Dashboard Overview
         </h1>
-        <p className="text-gray-600 ">
+        <p className="text-gray-500 dark:text-gray-400">
           Welcome back! Here&apos;s what&apos;s happening with your store today.
         </p>
       </div>
@@ -547,7 +548,7 @@ export default function AdminDashboardPage() {
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
               Recent Orders
             </h3>
-            <button className="text-sm text-[#e39a89] hover:text-[#d87a6a] dark:text-[#1b3c35] dark:hover:text-[#2a4d45] font-medium">
+            <button className="text-sm text-[#e39a89] hover:text-[#d87a6a] dark:text-white font-medium">
               View All
             </button>
           </div>
@@ -610,7 +611,7 @@ export default function AdminDashboardPage() {
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
               Top Products
             </h3>
-            <button className="text-sm text-[#e39a89] hover:text-[#d87a6a] dark:text-[#1b3c35] dark:hover:text-[#2a4d45] font-medium">
+            <button className="text-sm text-[#e39a89] hover:text-[#d87a6a] dark:text-white font-medium">
               View All
             </button>
           </div>
@@ -651,17 +652,21 @@ export default function AdminDashboardPage() {
       <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-gradient-to-r from-[#e39a89]/10 to-[#d87a6a]/10 dark:from-[#1b3c35]/20 dark:to-[#2a4d45]/20 rounded-xl p-4 text-center">
           <FiShoppingBag className="w-5 h-5 text-[#e39a89] dark:text-[#1b3c35] mx-auto mb-2" />
-          <p className="text-sm text-black">Today&apos;s Orders</p>
+          <p className="text-sm text-gray-800 dark:text-gray-400">
+            Today&apos;s Orders
+          </p>
           <p className="text-lg font-bold text-gray-800 dark:text-white">24</p>
         </div>
         <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4 text-center">
           <MdOutlineLocalShipping className="w-5 h-5 text-blue-600 dark:text-blue-400 mx-auto mb-2" />
-          <p className="text-sm text-black">To Ship</p>
+          <p className="text-sm text-gray-800 dark:text-gray-400">To Ship</p>
           <p className="text-lg font-bold text-gray-800 dark:text-white">8</p>
         </div>
         <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4 text-center">
           <FiTrendingUp className="w-5 h-5 text-green-600 dark:text-green-400 mx-auto mb-2" />
-          <p className="text-sm text-black">Product Growth</p>
+          <p className="text-sm text-gray-800 dark:text-gray-400">
+            Product Growth
+          </p>
           <p className="text-lg font-bold text-gray-800 dark:text-white">
             +
             {calculatePercentageChange(
@@ -673,7 +678,9 @@ export default function AdminDashboardPage() {
         </div>
         <div className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-4 text-center">
           <FiUsers className="w-5 h-5 text-purple-600 dark:text-purple-400 mx-auto mb-2" />
-          <p className="text-sm text-black">New Customers</p>
+          <p className="text-sm text-gray-800 dark:text-gray-400">
+            New Customers
+          </p>
           <p className="text-lg font-bold text-gray-800 dark:text-white">5</p>
         </div>
       </div>

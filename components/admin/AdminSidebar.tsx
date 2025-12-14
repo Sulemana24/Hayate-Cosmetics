@@ -9,7 +9,7 @@ import {
   RiUserLine,
   RiBarChart2Line,
 } from "react-icons/ri";
-import { FiShoppingCart, FiChevronLeft, FiX } from "react-icons/fi";
+import { FiShoppingCart, FiChevronLeft, FiX, FiCalendar } from "react-icons/fi";
 import { MdOutlineSpaceDashboard, MdOutlineAnalytics } from "react-icons/md";
 import { useState, useEffect } from "react";
 
@@ -28,6 +28,11 @@ const mainLinks = [
     name: "Orders",
     href: "/admin/orders",
     icon: FiShoppingCart,
+  },
+  {
+    name: "Consultations",
+    href: "/admin/consultations",
+    icon: FiCalendar,
   },
 ];
 
