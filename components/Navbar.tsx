@@ -312,7 +312,7 @@ export default function ClientNavbar() {
 
                         {/* Menu Items */}
                         <Link
-                          href="/my-account"
+                          href="/profile"
                           onClick={() => setIsUserMenuOpen(false)}
                           className="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
                         >

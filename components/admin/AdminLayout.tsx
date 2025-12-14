@@ -12,7 +12,9 @@ export default function AdminLayout({
       <div className="flex flex-col flex-1 min-h-screen">
         {/* Navbar */}
         <AdminNavbar />
-        <main className="flex-1 p-6 bg-gray-100 min-h-screen">{children}</main>
+        <main className="flex-1 p-6 bg-gray-100 dark:bg-gray-900 min-h-screen">
+          {children}
+        </main>
       </div>
     </div>
   );
