@@ -16,8 +16,16 @@ import {
   sendPasswordResetEmail,
   updateProfile,
 } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import {
+  doc,
+  setDoc,
+  deleteDoc,
+  serverTimestamp,
+  collection,
+  onSnapshot,
+} from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import { Favorite } from "@/types/favorite";
 
 interface AuthContextType {
   user: User | null;
@@ -25,6 +33,8 @@ interface AuthContextType {
   isLoggedIn: boolean;
   cartItemsCount: number;
   favoritesCount: number;
+  favorites: Favorite[];
+  toggleFavorite: (product: Favorite) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   signup: (email: string, password: string, name?: string) => Promise<void>;
@@ -51,23 +61,77 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true);
   const [cartItemsCount, setCartItemsCount] = useState(0);
   const [favoritesCount, setFavoritesCount] = useState(0);
+  const [favorites, setFavorites] = useState<Favorite[]>([]);
 
   const isLoggedIn = !!user;
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    let unsubscribeCart: (() => void) | undefined;
+    let unsubscribeFav: (() => void) | undefined;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
 
-      // Reset counts when user logs out
-      if (!firebaseUser) {
+      if (firebaseUser) {
+        // Real-time cart listener
+        const cartRef = collection(db, "users", firebaseUser.uid, "cart");
+        unsubscribeCart = onSnapshot(cartRef, (snapshot) => {
+          const total = snapshot.docs.reduce(
+            (acc, doc) => acc + (doc.data().quantity || 1),
+            0
+          );
+          setCartItemsCount(total);
+        });
+
+        // Real-time favorites listener
+        const favRef = collection(db, "users", firebaseUser.uid, "favorites");
+        unsubscribeFav = onSnapshot(favRef, (snapshot) => {
+          const favs = snapshot.docs.map((docSnap) => ({
+            id: docSnap.id,
+            ...(docSnap.data() as Omit<Favorite, "id">),
+          }));
+          setFavorites(favs);
+          setFavoritesCount(snapshot.size);
+        });
+      } else {
         setCartItemsCount(0);
         setFavoritesCount(0);
+        setFavorites([]);
       }
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeCart) unsubscribeCart();
+      if (unsubscribeFav) unsubscribeFav();
+    };
   }, []);
+
+  const toggleFavorite = async (product: Favorite) => {
+    if (!user) return;
+
+    const favoriteRef = doc(db, "users", user.uid, "favorites", product.id);
+    const exists = favorites.find((fav) => fav.id === product.id);
+
+    try {
+      if (exists) {
+        await deleteDoc(favoriteRef);
+      } else {
+        await setDoc(favoriteRef, {
+          productId: product.productId,
+          name: product.name,
+          imageUrl: product.imageUrl,
+          price: product.price,
+          category: product.category,
+          addedAt: serverTimestamp(),
+        });
+      }
+      // The onSnapshot listener will automatically update `favorites` and `favoritesCount`
+    } catch (err) {
+      console.error("Failed to toggle favorite:", err);
+    }
+  };
 
   const login = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
@@ -84,17 +148,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       password
     );
 
-    // Update Auth profile
     if (name && userCredential.user) {
       await updateProfile(userCredential.user, { displayName: name });
     }
 
-    // Save user data in Firestore
     await setDoc(doc(db, "users", userCredential.user.uid), {
       uid: userCredential.user.uid,
       email,
       displayName: name || null,
-      role: "client", // mark as client
+      role: "client",
       createdAt: serverTimestamp(),
     });
   };
@@ -124,6 +186,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isLoggedIn,
     cartItemsCount,
     favoritesCount,
+    favorites,
+    toggleFavorite,
     login,
     logout,
     signup,
