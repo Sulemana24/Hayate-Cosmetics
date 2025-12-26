@@ -48,18 +48,16 @@ export default function ClientFooter() {
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <FiPhone className="w-5 h-5 text-[#e39a89]" />
-                <span className="text-white/80">(233) 55-133-3780</span>
+                <span className="text-white/80">(233) 53-384-2202</span>
               </div>
               <div className="flex items-center gap-3">
                 <FiMail className="w-5 h-5 text-[#e39a89]" />
-                <span className="text-white/80">
-                  iddrisusulemana665@gmail.com
-                </span>
+                <span className="text-white/80">yussifhayate@icloud.com</span>
               </div>
               <div className="flex items-start gap-3">
                 <FiMapPin className="w-5 h-5 text-[#e39a89] mt-1" />
                 <span className="text-white/80">
-                  Fawuade
+                  Fawoade
                   <br />
                   Kumasi, Ghana
                 </span>
@@ -157,23 +155,7 @@ export default function ClientFooter() {
                   Contact Us
                 </Link>
               </li>
-              <li>
-                <Link
-                  href="/faq"
-                  className="text-white/70 hover:text-[#e39a89] transition-colors duration-200"
-                >
-                  FAQ
-                </Link>
-              </li>
 
-              <li>
-                <Link
-                  href="/returns"
-                  className="text-white/70 hover:text-[#e39a89] transition-colors duration-200"
-                >
-                  Returns & Exchanges
-                </Link>
-              </li>
               <li>
                 <Link
                   href="/privacy"

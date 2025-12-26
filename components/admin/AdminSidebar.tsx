@@ -31,7 +31,7 @@ const mainLinks = [
   },
   {
     name: "Consultations",
-    href: "/admin/consultations",
+    href: "/admin/consultation",
     icon: FiCalendar,
   },
 ];
