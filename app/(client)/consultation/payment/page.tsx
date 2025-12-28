@@ -63,7 +63,7 @@ interface PaystackOptions {
   amount: number;
   ref: string;
   currency: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   callback: (response: PaystackResponse) => void;
   onClose: () => void;
 }
@@ -82,48 +82,6 @@ export default function ConsultationPaymentPage() {
 
   // Paystack configuration
   const paystackPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "";
-
-  useEffect(() => {
-    // Prevent multiple initializations
-    if (hasInitializedRef.current) return;
-    hasInitializedRef.current = true;
-
-    const initializePayment = async () => {
-      // Get consultation data from sessionStorage
-      const storedData = sessionStorage.getItem("pendingConsultation");
-      if (!storedData) {
-        router.push("/consultation");
-        return;
-      }
-
-      try {
-        const data: ConsultationData = JSON.parse(storedData);
-
-        // Use setTimeout to defer state update
-        setTimeout(() => {
-          setConsultationData(data);
-        }, 0);
-
-        // Create a temporary consultation record in Firebase
-        await createTempConsultation(data);
-
-        // Load Paystack script
-        loadPaystackScript();
-      } catch (error) {
-        console.error("Error initializing payment:", error);
-        router.push("/consultation");
-      }
-    };
-
-    initializePayment();
-
-    return () => {
-      // Clean up script on unmount
-      if (scriptRef.current && document.head.contains(scriptRef.current)) {
-        document.head.removeChild(scriptRef.current);
-      }
-    };
-  }, [router]);
 
   const createTempConsultation = async (data: ConsultationData) => {
     try {
@@ -176,6 +134,48 @@ export default function ConsultationPaymentPage() {
     scriptRef.current = script;
     document.head.appendChild(script);
   };
+
+  useEffect(() => {
+    // Prevent multiple initializations
+    if (hasInitializedRef.current) return;
+    hasInitializedRef.current = true;
+
+    const initializePayment = async () => {
+      // Get consultation data from sessionStorage
+      const storedData = sessionStorage.getItem("pendingConsultation");
+      if (!storedData) {
+        router.push("/consultation");
+        return;
+      }
+
+      try {
+        const data: ConsultationData = JSON.parse(storedData);
+
+        // Use setTimeout to defer state update
+        setTimeout(() => {
+          setConsultationData(data);
+        }, 0);
+
+        // Create a temporary consultation record in Firebase
+        await createTempConsultation(data);
+
+        // Load Paystack script
+        loadPaystackScript();
+      } catch (error) {
+        console.error("Error initializing payment:", error);
+        router.push("/consultation");
+      }
+    };
+
+    initializePayment();
+
+    return () => {
+      // Clean up script on unmount
+      if (scriptRef.current && document.head.contains(scriptRef.current)) {
+        document.head.removeChild(scriptRef.current);
+      }
+    };
+  }, [router]);
 
   // Payment success callback
   const onPaymentSuccess = async (reference: PaystackResponse) => {

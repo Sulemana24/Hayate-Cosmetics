@@ -57,7 +57,7 @@ export default function ClientFooter() {
               <div className="flex items-start gap-3">
                 <FiMapPin className="w-5 h-5 text-[#e39a89] mt-1" />
                 <span className="text-white/80">
-                  Fawoade
+                  Tafo
                   <br />
                   Kumasi, Ghana
                 </span>
@@ -73,7 +73,7 @@ export default function ClientFooter() {
             <ul className="space-y-3">
               <li>
                 <Link
-                  href="/categories/skincare"
+                  href="/category/skincare"
                   className="text-white/70 hover:text-[#e39a89] transition-colors duration-200"
                 >
                   Skincare
@@ -81,7 +81,7 @@ export default function ClientFooter() {
               </li>
               <li>
                 <Link
-                  href="/categories/fragrance"
+                  href="/category/fragrance"
                   className="text-white/70 hover:text-[#e39a89] transition-colors duration-200"
                 >
                   Fragrance
@@ -89,7 +89,7 @@ export default function ClientFooter() {
               </li>
               <li>
                 <Link
-                  href="/categories/accessories"
+                  href="/category/accessories"
                   className="text-white/70 hover:text-[#e39a89] transition-colors duration-200"
                 >
                   Accessories

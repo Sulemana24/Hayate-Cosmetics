@@ -138,7 +138,7 @@ export default function ProductCard({
     const favoriteRef = doc(db, "users", user.uid, "favorites", product.id);
     const nextFavoriteState = !isFavorite;
 
-    setIsFavorite(nextFavoriteState); // optimistic UI
+    setIsFavorite(nextFavoriteState);
     setIsLoadingFavorite(true);
 
     try {
@@ -157,7 +157,7 @@ export default function ProductCard({
       onFavoriteToggle?.(product.id, nextFavoriteState);
     } catch (err) {
       console.error("Favorite update failed:", err);
-      setIsFavorite(!nextFavoriteState); // rollback
+      setIsFavorite(!nextFavoriteState);
       alert("Failed to update favorite. Try again.");
     } finally {
       setIsLoadingFavorite(false);
@@ -239,49 +239,32 @@ export default function ProductCard({
               </div>
             )}
 
-            <div
-              className={`relative ${getImageHeight()} w-full cursor-pointer`}
-            >
+            <div className="relative aspect-square w-full overflow-hidden cursor-pointer">
               {product.imageUrl && !imageError ? (
                 <Image
                   src={product.imageUrl}
                   alt={product.name}
-                  fill
-                  className={`object-contain transition-all duration-700 ${
+                  width={100}
+                  height={100}
+                  className={`object-cover w-full h-full transition-transform duration-300 ${
                     isMobile
                       ? "group-active:scale-105"
                       : "group-hover:scale-105"
-                  } p-2 sm:p-3 md:p-4`}
-                  sizes={
-                    layout === "list"
-                      ? "(max-width: 640px) 100vw, 50vw"
-                      : "25vw"
-                  }
+                  }`}
+                  sizes="(max-width: 768px) 100vw, 25vw"
                   onError={() => setImageError(true)}
-                  priority={false}
                   quality={90}
-                  style={{
-                    objectFit: "contain",
-                    maxWidth: "100%",
-                    maxHeight: "80%",
-                  }}
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center p-4">
-                  <div className="text-center">
-                    <FiPackage className="w-12 h-12 md:w-16 md:h-16 lg:w-20 lg:h-20 text-gray-300 dark:text-gray-700 mx-auto mb-4" />
-                    <p className="text-xs md:text-sm text-gray-400 dark:text-gray-500">
-                      No image available
-                    </p>
-                  </div>
+                <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+                  <FiPackage className="w-12 h-12 text-gray-400" />
                 </div>
               )}
 
-              <div className="absolute inset-0 bg-gradient-to-t from-black/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-
-              <div className="absolute bottom-3 left-3 md:bottom-4 md:left-4">
+              {/* Status badge */}
+              <div className="absolute bottom-3 left-3">
                 <span
-                  className={`text-xs font-medium px-2 py-1 md:px-3 md:py-1.5 rounded-full ${getStatusColor()} backdrop-blur-sm`}
+                  className={`text-xs font-medium px-3 py-1 rounded-full ${getStatusColor()} backdrop-blur-sm`}
                 >
                   {product.status}
                 </span>

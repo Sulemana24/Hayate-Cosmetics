@@ -42,7 +42,7 @@ export default function ClientNavbar() {
   const navLinks = [
     { name: "Home", href: "/" },
     { name: "Consultation", href: "/consultation" },
-    { name: "Categories", href: "/categories" },
+    { name: "Categories", href: "/category" },
     { name: "About", href: "/about" },
     { name: "Contact", href: "/contact" },
   ];

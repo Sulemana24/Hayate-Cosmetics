@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  limit,
+  Timestamp,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import ProductCard from "./ProductCard";
 import { Product } from "@/types/product";
@@ -78,7 +85,17 @@ export default function ProductsGrid({
         temp.sort((a, b) => a.name.localeCompare(b.name));
         break;
       default:
-        temp.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+        temp.sort((a, b) => {
+          const aTime =
+            a.createdAt instanceof Timestamp
+              ? a.createdAt.toMillis()
+              : a.createdAt?.getTime() || 0;
+          const bTime =
+            b.createdAt instanceof Timestamp
+              ? b.createdAt.toMillis()
+              : b.createdAt?.getTime() || 0;
+          return bTime - aTime;
+        });
     }
 
     setFilteredProducts(temp);
@@ -139,7 +156,7 @@ export default function ProductsGrid({
       )}
 
       {/* Product Grid */}
-      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredProducts.length === 0 ? (
           <p className="col-span-full text-center text-gray-500">
             No products found.

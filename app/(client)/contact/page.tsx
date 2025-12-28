@@ -307,8 +307,7 @@ export default function ContactPage() {
                 </div>
                 <div className="space-y-3">
                   <p className="text-gray-700 dark:text-gray-300">
-                    <strong>Address:</strong> 123 Beauty Street, Osu, Accra,
-                    Ghana
+                    <strong>Address:</strong> Tafo, Kumasi
                   </p>
                   <p className="text-gray-700 dark:text-gray-300">
                     <strong>Parking:</strong> Free parking available

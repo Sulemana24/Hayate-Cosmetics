@@ -32,7 +32,7 @@ interface Product {
   description: string;
   originalPrice: number;
   rating?: number;
-  createdAt?: any;
+  createdAt?: Date;
 }
 
 export default function NewArrivalsPage() {
@@ -50,7 +50,7 @@ export default function NewArrivalsPage() {
         setLoading(true);
         const productsRef = collection(db, "products");
 
-        let q = query(productsRef, orderBy("createdAt", "desc"));
+        const q = query(productsRef, orderBy("createdAt", "desc"));
 
         const snapshot = await getDocs(q);
         const productsData = snapshot.docs.map((doc) => ({
