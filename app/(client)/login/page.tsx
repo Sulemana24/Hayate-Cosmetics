@@ -5,14 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import {
-  FiMail,
-  FiLock,
-  FiEye,
-  FiEyeOff,
-  FiUser,
-  FiArrowLeft,
-} from "react-icons/fi";
+import { FiMail, FiLock, FiEye, FiEyeOff, FiUser } from "react-icons/fi";
 import Logo from "../../../public/images/comlogo.png";
 
 export default function LoginPage() {

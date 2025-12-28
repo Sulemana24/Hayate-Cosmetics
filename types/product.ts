@@ -7,11 +7,12 @@ export interface Product {
   originalPrice: number;
   discountedPrice: number;
   category: string;
+  categorySlug: "skincare" | "fragrance" | "makeup";
   quantity: number;
   status: "In Stock" | "Low Stock" | "Out of Stock";
   imageUrl?: string;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt?: Timestamp | Date;
+  updatedAt?: Timestamp | Date;
 }
 
 export interface ProductCardProps {

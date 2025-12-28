@@ -12,7 +12,7 @@ import {
   FiList,
   FiStar,
   FiTrendingUp,
-  FiCrown,
+  FiAward,
 } from "react-icons/fi";
 
 interface Product {
@@ -46,7 +46,7 @@ export default function BestSellersPage() {
 
         // First get all products
         const snapshot = await getDocs(productsRef);
-        let productsData = snapshot.docs.map((doc) => ({
+        const productsData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         })) as Product[];
@@ -115,7 +115,7 @@ export default function BestSellersPage() {
 
           <div className="text-center">
             <div className="flex items-center justify-center gap-3 mb-4">
-              <FiCrown className="w-10 h-10 text-yellow-500" />
+              <FiAward className="w-10 h-10 text-yellow-500" />
               <h1 className="text-4xl md:text-5xl font-bold text-[#1b3c35] dark:text-white">
                 Best Sellers
               </h1>
@@ -284,7 +284,7 @@ export default function BestSellersPage() {
                   {/* Top Seller Badge */}
                   {index < 3 && (
                     <div className="absolute top-2 left-2 bg-gradient-to-r from-yellow-500 to-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                      <FiCrown className="w-3 h-3" /> #{index + 1} Best Seller
+                      <FiAward className="w-3 h-3" /> #{index + 1} Best Seller
                     </div>
                   )}
 

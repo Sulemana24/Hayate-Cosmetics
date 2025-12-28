@@ -47,7 +47,6 @@ export default function Home() {
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
   const [bestSellers, setBestSellers] = useState<Product[]>([]);
   const [specialOffers, setSpecialOffers] = useState<Product[]>([]);
-
   const [loading, setLoading] = useState({
     newArrivals: true,
     bestSellers: true,
@@ -213,16 +212,16 @@ export default function Home() {
                 Fresh beauty products just for you
               </p>
             </div>
-            <Link
+            {/*  <Link
               href="/new-arrivals"
               className="flex items-center gap-2 text-[#e39a89] hover:text-[#d87a6a] font-semibold transition-colors"
             >
               View All <FiArrowRight />
-            </Link>
+            </Link> */}
           </div>
 
           {loading.newArrivals ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
               {[...Array(4)].map((_, i) => (
                 <div key={i} className="animate-pulse">
                   <div className="bg-gray-200 dark:bg-gray-700 h-64 rounded-xl mb-3"></div>
@@ -235,7 +234,7 @@ export default function Home() {
             <div className="relative">
               <button
                 onClick={handlePrevSlide}
-                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white dark:bg-gray-800 p-3 rounded-full shadow-lg hover:shadow-xl transition-shadow hover:scale-105"
+                className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white dark:bg-gray-800 p-3 rounded-full shadow-lg hover:scale-105"
                 aria-label="Previous slide"
               >
                 <FiChevronLeft className="w-6 h-6" />
@@ -243,19 +242,19 @@ export default function Home() {
 
               <button
                 onClick={handleNextSlide}
-                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white dark:bg-gray-800 p-3 rounded-full shadow-lg hover:shadow-xl transition-shadow hover:scale-105"
+                className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white dark:bg-gray-800 p-3 rounded-full shadow-lg hover:scale-105"
                 aria-label="Next slide"
               >
                 <FiChevronRight className="w-6 h-6" />
               </button>
 
-              <div className="overflow-hidden">
+              <div className="overflow-x-auto lg:overflow-hidden">
                 <div
                   className={`transition-all duration-300 ease-in-out ${
                     isTransitioning ? "opacity-50" : "opacity-100"
                   }`}
                 >
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
                     {getCurrentSlideProducts().map((product) => (
                       <Link
                         key={product.id}
@@ -288,12 +287,6 @@ export default function Home() {
                                 ₵{product.originalPrice.toFixed(2)}
                               </span>
                             )}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <FiStar className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                            <span className="text-sm text-gray-600 dark:text-gray-400">
-                              {product.rating?.toFixed(1) || "4.5"}
-                            </span>
                           </div>
                         </div>
                       </Link>
@@ -397,7 +390,7 @@ export default function Home() {
                   <h3 className="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-1">
                     {product.name}
                   </h3>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col md:flex-row items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-xl font-bold text-[#1b3c35] dark:text-white">
                         ₵{product.discountedPrice.toFixed(2)}
@@ -480,21 +473,17 @@ export default function Home() {
                   <h3 className="font-semibold text-gray-900 dark:text-white mb-2 truncate">
                     {product.name}
                   </h3>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col md:flex-row items-center justify-between">
                     <span className="text-lg font-bold text-[#1b3c35] dark:text-white">
                       ₵{product.discountedPrice.toFixed(2)}
                     </span>
                     <div className="flex items-center gap-1">
-                      {[...Array(5)].map((_, i) => (
-                        <FiStar
-                          key={i}
-                          className={`w-4 h-4 ${
-                            i < Math.floor(product.rating || 5)
-                              ? "text-yellow-400 fill-yellow-400"
-                              : "text-gray-300"
-                          }`}
-                        />
-                      ))}
+                      <span className="text-sm text-red-500 font-medium">
+                        Save ₵
+                        {(
+                          product.originalPrice - product.discountedPrice
+                        ).toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 </Link>

@@ -130,28 +130,28 @@ export default function HeroSection() {
       name: "Skincare",
       image: Image6,
       count: "45 Products",
-      link: "/collections/skincare",
+      link: "/category/skincare",
     },
     {
       id: 2,
       name: "Fragrance",
       image: Image5,
       count: "32 Products",
-      link: "/collections/fragrance",
+      link: "/category/fragrance",
     },
     {
       id: 3,
       name: "Accessories",
       image: Image4,
       count: "28 Products",
-      link: "/collections/accessories",
+      link: "/category/accessories",
     },
     {
       id: 4,
       name: "Makeup",
       image: Image7,
       count: "56 Products",
-      link: "/collections/makeup",
+      link: "/category/makeup",
     },
   ];
 
@@ -455,7 +455,7 @@ export default function HeroSection() {
               Loading trending products...
             </p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {allTrending.slice(0, visibleCount).map((product) => {
                 const isFav = favorites[product.id] || false;
                 const isLoading = loadingFavs[product.id] || false;
