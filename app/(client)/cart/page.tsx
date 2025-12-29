@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { getAuth } from "firebase/auth";
 import {
@@ -12,7 +13,13 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import Image from "next/image";
-import { FiTrash2, FiPlus, FiMinus, FiShoppingCart } from "react-icons/fi";
+import {
+  FiTrash2,
+  FiPlus,
+  FiMinus,
+  FiShoppingCart,
+  FiShoppingBag,
+} from "react-icons/fi";
 
 interface CartItem {
   id: string;
@@ -27,6 +34,8 @@ export default function Cart() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isRemoving, setIsRemoving] = useState<string | null>(null);
+  const router = useRouter();
 
   const auth = getAuth();
 
@@ -85,14 +94,20 @@ export default function Cart() {
   const handleRemoveItem = async (item: CartItem) => {
     if (!currentUserId) return;
 
-    setCartItems((prev) => prev.filter((ci) => ci.id !== item.id));
+    setIsRemoving(item.id);
 
-    try {
-      const itemRef = doc(db, "users", currentUserId, "cart", item.id);
-      await deleteDoc(itemRef);
-    } catch (err) {
-      console.error("Failed to remove item:", err);
-    }
+    // Add a slight delay for animation
+    setTimeout(async () => {
+      setCartItems((prev) => prev.filter((ci) => ci.id !== item.id));
+      setIsRemoving(null);
+
+      try {
+        const itemRef = doc(db, "users", currentUserId, "cart", item.id);
+        await deleteDoc(itemRef);
+      } catch (err) {
+        console.error("Failed to remove item:", err);
+      }
+    }, 300);
   };
 
   const totalPrice = cartItems.reduce(
@@ -100,71 +115,195 @@ export default function Cart() {
     0
   );
 
-  if (loading) return <p>Loading cart...</p>;
-  if (!cartItems.length)
+  const itemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+
+  if (loading) {
     return (
-      <div className="text-center p-6 text-gray-500">
-        <FiShoppingCart className="mx-auto mb-2 w-12 h-12" />
-        Your cart is empty.
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-500 mb-4"></div>
+        <p className="text-gray-600 dark:text-gray-400">Loading your cart...</p>
       </div>
     );
+  }
+
+  if (!cartItems.length) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[500px] p-8 text-center">
+        <div className="relative w-32 h-32 mb-6">
+          <div className="absolute inset-0 bg-[#d87a6a] rounded-full"></div>
+          <FiShoppingBag className="absolute inset-0 m-auto w-16 h-16 text-white" />
+        </div>
+        <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-3">
+          Your cart is empty
+        </h3>
+        <p className="text-gray-600 dark:text-gray-400 max-w-md mb-8">
+          Looks like you haven&apos;t added any items to your cart yet. Start
+          shopping to see items here!
+        </p>
+        <button
+          onClick={() => router.push("/")}
+          className="px-6 py-3 bg-[#d87a6a] text-white font-medium rounded-full transition-all duration-300 shadow-lg hover:shadow-xl"
+        >
+          Continue Shopping
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white dark:bg-gray-900 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-4">Your Cart</h2>
-
-      <div className="flex flex-col gap-4">
-        {cartItems.map((item) => (
-          <div
-            key={item.id}
-            className="flex items-center gap-4 p-4 border rounded-lg dark:border-gray-700"
-          >
-            {item.imageUrl && (
-              <Image
-                src={item.imageUrl}
-                alt={item.name}
-                width={80}
-                height={80}
-                className="object-contain rounded"
-              />
-            )}
-            <div className="flex-1">
-              <h3 className="font-semibold">{item.name}</h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                ₵{item.price.toFixed(2)} each
+    <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Cart Items Section */}
+        <div className="lg:w-2/3">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                Shopping Cart
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-2">
+                {itemCount} {itemCount === 1 ? "item" : "items"} in your cart
               </p>
             </div>
+            <div className="hidden sm:block px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-800 rounded-full">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Total:{" "}
+                <span className="text-lg font-bold text-[#d87a6a] dark:text-[#d87a6a]">
+                  ₵{totalPrice.toFixed(2)}
+                </span>
+              </span>
+            </div>
+          </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleUpdateQuantity(item, -1)}
-                className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded"
+          <div className="space-y-4">
+            {cartItems.map((item) => (
+              <div
+                key={item.id}
+                className={`bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 transition-all duration-300 ${
+                  isRemoving === item.id
+                    ? "opacity-0 scale-95"
+                    : "opacity-100 scale-100"
+                }`}
               >
-                <FiMinus />
-              </button>
-              <span>{item.quantity}</span>
-              <button
-                onClick={() => handleUpdateQuantity(item, 1)}
-                className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded"
-              >
-                <FiPlus />
-              </button>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                  {/* Product Image */}
+                  <div className="relative flex-shrink-0">
+                    {item.imageUrl ? (
+                      <div className="relative w-24 h-24 sm:w-28 sm:h-28 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-700">
+                        <Image
+                          src={item.imageUrl}
+                          alt={item.name}
+                          fill
+                          className="object-contain p-2"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-24 h-24 sm:w-28 sm:h-28 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-700 dark:to-gray-800 rounded-xl flex items-center justify-center">
+                        <FiShoppingBag className="w-10 h-10 text-gray-400 dark:text-gray-500" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Product Details */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-gray-900 dark:text-white text-lg mb-2">
+                      {item.name}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-4 mb-4">
+                      <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                        ₵{item.price.toFixed(2)}
+                      </span>
+                      <span className="text-gray-500 dark:text-gray-400 text-sm">
+                        each
+                      </span>
+                    </div>
+
+                    {/* Quantity Controls */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <button
+                          onClick={() => handleUpdateQuantity(item, -1)}
+                          className="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors duration-200"
+                          aria-label="Decrease quantity"
+                        >
+                          <FiMinus className="w-4 h-4" />
+                        </button>
+                        <div className="w-12 text-center">
+                          <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                            {item.quantity}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleUpdateQuantity(item, 1)}
+                          className="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors duration-200"
+                          aria-label="Increase quantity"
+                        >
+                          <FiPlus className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                          ₵{(item.price * item.quantity).toFixed(2)}
+                        </div>
+                        <button
+                          onClick={() => handleRemoveItem(item)}
+                          className="flex items-center gap-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-200"
+                        >
+                          <FiTrash2 className="w-5 h-5" />
+                          <span className="text-sm font-medium">Remove</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Order Summary Section */}
+        <div className="lg:w-1/3">
+          <div className="sticky top-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+              Order Summary
+            </h2>
+
+            <div className="space-y-4 mb-6">
+              <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                <span>Subtotal ({itemCount} items)</span>
+                <span className="font-medium">₵{totalPrice.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                <span>Shipping</span>
+                <span className="font-medium">₵0.00</span>
+              </div>
+              <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                <span>Tax</span>
+                <span className="font-medium">₵0.00</span>
+              </div>
+              <div className="border-t pt-4">
+                <div className="flex justify-between text-lg font-bold text-gray-900 dark:text-white">
+                  <span>Total</span>
+                  <span className="text-2xl">₵{totalPrice.toFixed(2)}</span>
+                </div>
+              </div>
             </div>
 
             <button
-              onClick={() => handleRemoveItem(item)}
-              className="text-red-500 hover:text-red-700"
+              onClick={() => router.push("/checkout")}
+              className="w-full py-4 bg-[#d87a6a] text-white font-bold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 mb-4"
             >
-              <FiTrash2 />
+              Proceed to Checkout
             </button>
-          </div>
-        ))}
-      </div>
 
-      <div className="mt-6 text-right">
-        <span className="text-lg font-bold">
-          Total: ₵{totalPrice.toFixed(2)}
-        </span>
+            <div className="text-center">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Shipping fees varies based on location and it&apos;s to be added
+                during delivery process.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

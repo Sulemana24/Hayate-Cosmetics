@@ -25,6 +25,7 @@ interface Product {
   originalPrice: number;
   discountedPrice: number;
   category: string;
+  subCategory: string;
   quantity: number;
   status: "In Stock" | "Low Stock" | "Out of Stock";
   createdAt: Timestamp;
@@ -47,11 +48,24 @@ export default function EditProductPage() {
     originalPrice: "",
     discountedPrice: "",
     category: "",
+    subCategory: "",
     quantity: "",
     status: "In Stock" as "In Stock" | "Low Stock" | "Out of Stock",
   });
 
-  const productCategories = ["Cosmetics", "Fragrance", "Accessories"];
+  const productCategories = ["Skincare", "Fragrance", "Accessories"];
+  const subCategoriesMap: Record<string, string[]> = {
+    Skincare: [
+      "Cleanser",
+      "Moisturizer",
+      "Serum",
+      "Sunscreen",
+      "Mask",
+      "Lotion",
+    ],
+    Fragrance: ["Perfume", "Body Mists", "Essential Oil", "Deodorant"],
+    Accessories: ["Tools", "Bags", "Gift Sets"],
+  };
   const statusOptions = ["In Stock", "Low Stock", "Out of Stock"];
 
   // Fetch product data
@@ -75,6 +89,7 @@ export default function EditProductPage() {
           originalPrice: productData.originalPrice.toString(),
           discountedPrice: productData.discountedPrice.toString(),
           category: productData.category,
+          subCategory: productData.subCategory || "",
           quantity: productData.quantity.toString(),
           status: productData.status,
         });
@@ -98,9 +113,12 @@ export default function EditProductPage() {
     >
   ) => {
     const { name, value } = e.target;
-    setProductForm((prev) => ({ ...prev, [name]: value }));
+    setProductForm((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === "category" ? { subCategory: "" } : {}),
+    }));
   };
-
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -150,6 +168,7 @@ export default function EditProductPage() {
         originalPrice: parseFloat(productForm.originalPrice),
         discountedPrice: parseFloat(productForm.discountedPrice),
         category: productForm.category,
+        subCategory: productForm.subCategory,
         quantity: parseInt(productForm.quantity),
         status: productForm.status,
         updatedAt: Timestamp.now(),
@@ -282,6 +301,31 @@ export default function EditProductPage() {
                     <MdOutlineCategory className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
                   </div>
                 </div>
+                {productForm.category && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Sub-Category *
+                    </label>
+                    <div className="relative">
+                      <select
+                        name="subCategory"
+                        required
+                        value={productForm.subCategory}
+                        disabled={!productForm.category}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#e39a89]/20 focus:border-[#e39a89] dark:focus:border-[#1b3c35] outline-none transition-all duration-200 appearance-none"
+                      >
+                        <option value="">Select sub-category</option>
+                        {subCategoriesMap[productForm.category]?.map((sub) => (
+                          <option key={sub} value={sub}>
+                            {sub}
+                          </option>
+                        ))}
+                      </select>
+                      <MdOutlineCategory className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

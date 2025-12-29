@@ -25,7 +25,7 @@ export default function CategoryHeader({
   return (
     <div className="relative overflow-hidden">
       {/* Background Image with Overlay */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0 pointer-events-none">
         <Image
           src={backgroundImage}
           alt={title}
@@ -55,6 +55,7 @@ export default function CategoryHeader({
               {subtitle}
             </span>
           </div>
+
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
             {title}
           </h1>
@@ -69,7 +70,7 @@ export default function CategoryHeader({
                 const productsSection = document.getElementById("products");
                 productsSection?.scrollIntoView({ behavior: "smooth" });
               }}
-              className="inline-flex items-center justify-center gap-2 bg-white text-gray-800 hover:bg-gray-50 px-8 py-3 rounded-xl font-semibold text-lg transition-all duration-300 hover:scale-105 shadow-lg group"
+              className="inline-flex items-center justify-center gap-2 bg-white text-gray-800 hover:bg-gray-50 px-8 py-3 rounded-xl font-semibold text-lg transition-all duration-300 hover:scale-105 shadow-lg group cursor-pointer"
             >
               <FiShoppingBag className="w-5 h-5 group-hover:scale-110 transition-transform" />
               Shop Now
@@ -89,7 +90,7 @@ export default function CategoryHeader({
       </div>
 
       {/* Floating decorative elements */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/20 to-transparent z-10"></div>
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/20 to-transparent z-10 pointer-events-none"></div>
     </div>
   );
 }

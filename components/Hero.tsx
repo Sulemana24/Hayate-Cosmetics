@@ -69,7 +69,7 @@ export default function HeroSection() {
         "Discover our organic, cruelty-free skincare products for radiant, healthy skin.",
       image: Image1,
       buttonText: "Shop Skincare",
-      buttonLink: "/collections/skincare",
+      buttonLink: "/category/skincare",
       color: "from-[#e39a89] to-[#d87a6a]",
       textColor: "text-white",
     },
@@ -81,7 +81,7 @@ export default function HeroSection() {
         "Elevate your presence with our exclusive collection of premium perfumes.",
       image: Image3,
       buttonText: "Shop Fragrances",
-      buttonLink: "/collections/fragrance",
+      buttonLink: "/category/fragrance",
       color: "from-[#1b3c35] to-[#2a4d45]",
       textColor: "text-white",
     },
@@ -93,7 +93,7 @@ export default function HeroSection() {
         "Stylish sunglasses, delicate jewelry, and fashion accessories for every occasion.",
       image: Image2,
       buttonText: "Shop Accessories",
-      buttonLink: "/collections/accessories",
+      buttonLink: "/category/accessories",
       color: "from-[#f8b195] to-[#f67280]",
       textColor: "text-white",
     },
@@ -313,7 +313,7 @@ export default function HeroSection() {
                       {slide.buttonText}
                     </Link>
                     <Link
-                      href="/collections/all"
+                      href="/category/all"
                       className="inline-flex items-center justify-center gap-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white border-2 border-white/30 px-8 py-3 rounded-xl font-semibold text-lg transition-all duration-300"
                     >
                       Browse All

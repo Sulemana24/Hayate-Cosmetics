@@ -26,12 +26,26 @@ export default function NewProductPage() {
     originalPrice: "",
     discountedPrice: "",
     category: "",
+    subCategory: "",
     quantity: "",
     status: "In Stock" as "In Stock" | "Low Stock" | "Out of Stock",
     imageUrl: "",
   });
 
   const productCategories = ["Skincare", "Fragrance", "Accessories"];
+  const subCategoriesMap: Record<string, string[]> = {
+    Skincare: [
+      "Cleanser",
+      "Moisturizer",
+      "Serum",
+      "Sunscreen",
+      "Mask",
+      "Lotion",
+    ],
+    Fragrance: ["Perfume", "Body Mists", "Essential Oil", "Deodorant"],
+    Accessories: ["Tools", "Bags", "Gift Sets"],
+  };
+
   const statusOptions = ["In Stock", "Low Stock", "Out of Stock"];
 
   const handleInputChange = (
@@ -40,7 +54,12 @@ export default function NewProductPage() {
     >
   ) => {
     const { name, value } = e.target;
-    setProductForm((prev) => ({ ...prev, [name]: value }));
+
+    setProductForm((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === "category" ? { subCategory: "" } : {}),
+    }));
   };
 
   const handleImageUploadComplete = (url: string) => {
@@ -77,12 +96,19 @@ export default function NewProductPage() {
       const productData = {
         name: productForm.name.trim(),
         description: productForm.description.trim(),
+
+        category: productForm.category,
+        categorySlug: productForm.category.toLowerCase(),
+
+        subCategory: productForm.subCategory,
+        subCategorySlug: productForm.subCategory.toLowerCase(),
+
         originalPrice: parseFloat(productForm.originalPrice),
         discountedPrice: parseFloat(productForm.discountedPrice),
-        category: productForm.category,
         quantity: parseInt(productForm.quantity),
         status: productForm.status,
         imageUrl: productForm.imageUrl || null,
+
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       };
@@ -206,71 +232,32 @@ export default function NewProductPage() {
                     <MdOutlineCategory className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
                   </div>
                 </div>
+                {productForm.category && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Sub-Category *
+                    </label>
+                    <div className="relative">
+                      <select
+                        name="subCategory"
+                        required={!!productForm.category}
+                        value={productForm.subCategory}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#e39a89]/20 focus:border-[#e39a89] dark:focus:border-[#1b3c35] outline-none transition-all duration-200 appearance-none"
+                      >
+                        <option value="">Select sub-category</option>
+                        {subCategoriesMap[productForm.category]?.map((sub) => (
+                          <option key={sub} value={sub}>
+                            {sub}
+                          </option>
+                        ))}
+                      </select>
+                      <MdOutlineCategory className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-
-            {/* <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-[#1b3c35] dark:text-white mb-4">
-                Product Image
-              </h3>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleImageUpload}
-                accept="image/*"
-                className="hidden"
-              />
-
-              {imagePreview ? (
-                <div className="relative">
-                  <div className="w-full h-64 rounded-xl overflow-hidden bg-gradient-to-r from-[#e39a89]/10 to-[#d87a6a]/10">
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="absolute top-4 right-4 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleUploadClick}
-                      className="p-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg hover:bg-white dark:hover:bg-gray-800 transition-colors duration-200"
-                      title="Change image"
-                    >
-                      <FiCamera className="w-4 h-4 text-gray-700 dark:text-gray-300" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={removeImage}
-                      className="p-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg hover:bg-white dark:hover:bg-gray-800 transition-colors duration-200"
-                      title="Remove image"
-                    >
-                      <FiX className="w-4 h-4 text-red-600" />
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div
-                  onClick={handleUploadClick}
-                  className="w-full h-64 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-[#e39a89] dark:hover:border-[#1b3c35] transition-colors duration-200 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  <div className="p-4 rounded-full bg-gradient-to-r from-[#e39a89]/10 to-[#d87a6a]/10 mb-3">
-                    <FiUpload className="w-8 h-8 text-[#e39a89]" />
-                  </div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Click to upload product image
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    PNG, JPG, GIF up to 5MB
-                  </p>
-                </div>
-              )}
-
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
-                Leave empty to use default product image
-              </p>
-            </div>
-          </div> */}
 
             {/* Image Upload with UploadThing */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">

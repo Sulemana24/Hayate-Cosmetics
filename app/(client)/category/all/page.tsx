@@ -37,37 +37,33 @@ export default function AllProductsPage() {
       id: 1,
       name: "Skincare",
       slug: "skincare",
-      count: "45 Products",
       image: skincareImg,
       color: "from-[#e39a89] to-[#d87a6a]",
-      link: "/collections/skincare",
+      link: "/category/skincare",
     },
     {
       id: 2,
       name: "Fragrance",
       slug: "fragrance",
-      count: "32 Products",
       image: fragranceImg,
       color: "from-[#1b3c35] to-[#2a4d45]",
-      link: "/collections/fragrance",
+      link: "/category/fragrance",
     },
     {
       id: 3,
       name: "Accessories",
       slug: "accessories",
-      count: "28 Products",
       image: accessoriesImg,
       color: "from-[#f8b195] to-[#f67280]",
-      link: "/collections/accessories",
+      link: "/category/accessories",
     },
     {
       id: 4,
       name: "Makeup",
       slug: "makeup",
-      count: "56 Products",
       image: makeupImg,
       color: "from-[#6a5acd] to-[#836fff]",
-      link: "/collections/makeup",
+      link: "/category/makeup",
     },
   ];
 
@@ -167,7 +163,6 @@ export default function AllProductsPage() {
         result.sort((a, b) => b.name.localeCompare(a.name));
         break;
       default:
-        // Featured - keep original order
         break;
     }
 
@@ -288,7 +283,9 @@ export default function AllProductsPage() {
                     <h3 className="text-xl font-bold text-white mb-2">
                       {category.name}
                     </h3>
-                    <p className="text-white/90 text-sm">{category.count}</p>
+                    <p className="text-white/90 text-sm">
+                      {getCategoryCount(category.slug)} products
+                    </p>
                   </div>
                 </div>
                 <div className="absolute top-4 right-4 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full">
@@ -388,7 +385,7 @@ export default function AllProductsPage() {
           <div className="flex gap-8">
             {/* Filters Sidebar (Desktop) */}
             <div
-              className={`hidden md:block w-64 flex-shrink-0 ${
+              className={`hidden md:block w-64 shrink-0 ${
                 showFilters ? "block" : "hidden"
               } md:block`}
             >
@@ -592,7 +589,7 @@ export default function AllProductsPage() {
                             className={`block w-full text-left px-3 py-2 rounded-lg transition-colors ${
                               activeCategory === "all"
                                 ? "bg-[#e39a89] text-white"
-                                : "hover:bg-gray-100"
+                                : "hover:bg-gray-100 text-black"
                             }`}
                           >
                             <div className="flex justify-between items-center">
@@ -612,7 +609,7 @@ export default function AllProductsPage() {
                               className={`block w-full text-left px-3 py-2 rounded-lg transition-colors ${
                                 activeCategory === category.slug
                                   ? "bg-[#e39a89] text-white"
-                                  : "hover:bg-gray-100"
+                                  : "hover:bg-gray-100 text-black"
                               }`}
                             >
                               <div className="flex justify-between items-center">
