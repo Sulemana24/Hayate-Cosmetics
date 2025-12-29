@@ -1,292 +1,762 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { getAuth } from "firebase/auth";
+import { db } from "@/lib/firebase";
+import {
+  collection,
+  getDocs,
+  doc,
+  writeBatch,
+  addDoc,
+  updateDoc,
+  serverTimestamp,
+  FieldValue,
+} from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import {
   FiLock,
   FiCreditCard,
   FiTruck,
-  FiMapPin,
+  FiCheckCircle,
+  FiArrowLeft,
   FiUser,
-  FiPhone,
   FiMail,
-  FiCheck,
-  FiChevronRight,
-  FiAlertCircle,
+  FiPhone,
+  FiMapPin,
 } from "react-icons/fi";
-import Image from "next/image";
-import Link from "next/link";
 
 interface CartItem {
   id: string;
+  productId: string;
   name: string;
+  imageUrl?: string;
   price: number;
-  discountedPrice: number;
-  imageUrl: string;
   quantity: number;
-  category: string;
 }
 
-interface DeliveryOption {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  estimatedDays: string;
+interface FormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  regions: string;
+  locality: string;
+  country: string;
+  paymentMethod: "card" | "paypal" | "mobile_money";
+  saveInfo: boolean;
 }
 
-interface PaymentMethod {
-  id: string;
-  name: string;
-  icon: React.ReactNode;
-  description: string;
+interface OrderUpdateData {
+  paymentStatus: "completed";
+  paymentReference: string;
+  paymentDate: ReturnType<typeof serverTimestamp>;
+  status: "processing";
+  confirmedAt: ReturnType<typeof serverTimestamp>;
+  updatedAt: ReturnType<typeof serverTimestamp>;
+  transactionId?: string;
+  transactionReference?: string;
+  currency?: string;
+  channel?: string;
+}
+
+interface PaystackResponse {
+  status: string;
+  message: string;
+  reference: string;
+  trans: string;
+  transaction: string;
+  trxref: string;
+  currency: string;
+  channel: string;
+}
+
+declare global {
+  interface Window {
+    PaystackPop: {
+      setup: (options: PaystackOptions) => { openIframe: () => void };
+    };
+  }
+}
+
+interface PaystackOptions {
+  key: string;
+  email: string;
+  amount: number;
+  ref: string;
+  currency: string;
+  metadata?: Record<string, unknown>;
+  callback: (response: PaystackResponse) => void;
+  onClose: () => void;
 }
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const auth = getAuth();
+
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState(1); // 1: Delivery, 2: Payment, 3: Review
-  const [formData, setFormData] = useState({
+  const [processing, setProcessing] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [activeStep, setActiveStep] = useState(1);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [orderId, setOrderId] = useState<string>("");
+  const [tempOrderId, setTempOrderId] = useState<string>("");
+  const [paystackLoaded, setPaystackLoaded] = useState(false);
+  const scriptRef = useRef<HTMLScriptElement | null>(null);
+  const tempOrderIdRef = useRef<string>("");
+  const currentUserIdRef = useRef<string>("");
+  const cartItemsRef = useRef<CartItem[]>([]);
+
+  const paystackPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "";
+
+  const [formData, setFormData] = useState<FormData>({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
     address: "",
+    regions: "",
     city: "",
-    region: "",
-    postalCode: "",
-    deliveryNotes: "",
+    locality: "",
+    country: "Ghana",
+    paymentMethod: "mobile_money",
+    saveInfo: true,
   });
-  const [selectedDelivery, setSelectedDelivery] = useState<string>("standard");
-  const [selectedPayment, setSelectedPayment] =
-    useState<string>("mobile-money");
-  const [agreeTerms, setAgreeTerms] = useState(false);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  // Delivery options
-  const deliveryOptions: DeliveryOption[] = [
-    {
-      id: "standard",
-      name: "Standard Delivery",
-      description: "3-5 business days",
-      price: 15.0,
-      estimatedDays: "3-5 business days",
-    },
-    {
-      id: "express",
-      name: "Express Delivery",
-      description: "1-2 business days",
-      price: 25.0,
-      estimatedDays: "1-2 business days",
-    },
-    {
-      id: "pickup",
-      name: "Store Pickup",
-      description: "Pick up at our Accra store",
-      price: 0.0,
-      estimatedDays: "Ready in 2 hours",
-    },
-  ];
+  const totalPrice = cartItems.reduce(
+    (acc, item) => acc + item.price * item.quantity,
+    0
+  );
+  const shippingFee = totalPrice > 100 ? 0 : 10;
+  const finalTotal = totalPrice + shippingFee;
 
-  // Payment methods
-  const paymentMethods: PaymentMethod[] = [
-    {
-      id: "mobile-money",
-      name: "Mobile Money",
-      icon: "💰",
-      description: "Pay with MTN Mobile Money or Vodafone Cash",
-    },
-    {
-      id: "card",
-      name: "Credit/Debit Card",
-      icon: <FiCreditCard className="w-6 h-6" />,
-      description: "Visa, Mastercard, or American Express",
-    },
-    {
-      id: "bank-transfer",
-      name: "Bank Transfer",
-      icon: "🏦",
-      description: "Direct bank transfer",
-    },
-  ];
+  const itemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
-  // Ghana regions
-  const regions = [
-    "Greater Accra",
-    "Ashanti",
-    "Western",
-    "Central",
-    "Eastern",
-    "Volta",
-    "Northern",
-    "Upper East",
-    "Upper West",
-    "Bono",
-    "Ahafo",
-    "Bono East",
-    "Oti",
-    "Savannah",
-    "North East",
-  ];
-
-  // Load cart items
   useEffect(() => {
-    const loadCart = () => {
+    tempOrderIdRef.current = tempOrderId;
+  }, [tempOrderId]);
+
+  useEffect(() => {
+    currentUserIdRef.current = currentUserId || "";
+  }, [currentUserId]);
+
+  useEffect(() => {
+    cartItemsRef.current = cartItems;
+  }, [cartItems]);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        setCurrentUserId(user.uid);
+        currentUserIdRef.current = user.uid;
+        setFormData((prev) => ({
+          ...prev,
+          email: user.email || "",
+        }));
+      } else {
+        router.push("/login?redirect=/checkout");
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router]);
+
+  useEffect(() => {
+    if (!currentUserId) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchCart = async () => {
       try {
-        // In a real app, you would get this from your cart context or localStorage
-        const savedCart = localStorage.getItem("beauty-store-cart");
-        if (savedCart) {
-          const cart = JSON.parse(savedCart);
-          setCartItems(cart);
-        }
-      } catch (error) {
-        console.error("Error loading cart:", error);
+        setLoading(true);
+        const cartRef = collection(db, "users", currentUserId, "cart");
+        const snapshot = await getDocs(cartRef);
+
+        const items = snapshot.docs.map((docSnap) => {
+          const { id, ...rest } = docSnap.data() as CartItem;
+          return {
+            id: docSnap.id,
+            ...rest,
+          };
+        });
+
+        setCartItems(items);
+        cartItemsRef.current = items;
+      } catch (err) {
+        console.error("Failed to fetch cart:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    loadCart();
-  }, []);
+    fetchCart();
+  }, [currentUserId]);
 
-  // Calculate totals
-  const subtotal = cartItems.reduce(
-    (sum, item) => sum + item.discountedPrice * item.quantity,
-    0
-  );
-  const deliveryFee =
-    deliveryOptions.find((d) => d.id === selectedDelivery)?.price || 0;
-  const total = subtotal + deliveryFee;
-
-  // Handle form input changes
-  const handleInputChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    // Clear error when user starts typing
-    if (formErrors[name]) {
-      setFormErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }));
-    }
-  };
-
-  // Validate form
-  const validateForm = () => {
-    const errors: Record<string, string> = {};
-
-    if (!formData.firstName.trim()) errors.firstName = "First name is required";
-    if (!formData.lastName.trim()) errors.lastName = "Last name is required";
-    if (!formData.email.trim()) {
-      errors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = "Email is invalid";
-    }
-    if (!formData.phone.trim()) errors.phone = "Phone number is required";
-    if (!formData.address.trim()) errors.address = "Address is required";
-    if (!formData.city.trim()) errors.city = "City is required";
-    if (!formData.region) errors.region = "Region is required";
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Handle step navigation
-  const handleNextStep = () => {
-    if (step === 1 && !validateForm()) {
+  const loadPaystackScript = () => {
+    if (document.querySelector('script[src*="paystack"]')) {
+      setPaystackLoaded(true);
       return;
     }
-    if (step < 3) {
-      setStep(step + 1);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+
+    const script = document.createElement("script");
+    script.src = "https://js.paystack.co/v1/inline.js";
+    script.async = true;
+    script.onload = () => {
+      setTimeout(() => {
+        setPaystackLoaded(true);
+      }, 0);
+    };
+    script.onerror = () => {
+      console.error("Failed to load Paystack script");
+      setTimeout(() => {
+        setPaystackLoaded(false);
+      }, 0);
+    };
+
+    scriptRef.current = script;
+    document.head.appendChild(script);
   };
 
-  const handlePrevStep = () => {
-    if (step > 1) {
-      setStep(step - 1);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
-
-  // Handle place order
-  const handlePlaceOrder = async () => {
-    if (!agreeTerms) {
-      alert("Please agree to the terms and conditions");
-      return;
+  const createTempOrder = async (): Promise<string> => {
+    if (!currentUserId) {
+      throw new Error("User must be logged in to create an order");
     }
 
     try {
-      // In a real app, you would send this to your backend
+      const newOrderId = `HAY-${Math.floor(10000 + Math.random() * 90000)}`;
+      const currentTimestamp = serverTimestamp();
+
       const orderData = {
-        customer: formData,
+        userId: currentUserId,
         items: cartItems,
-        delivery: deliveryOptions.find((d) => d.id === selectedDelivery),
-        payment: paymentMethods.find((p) => p.id === selectedPayment),
-        subtotal,
-        deliveryFee,
-        total,
+        totalAmount: finalTotal,
+        subtotal: totalPrice,
+        shippingFee,
+        tax: 0,
+        status: "pending_payment",
+        shippingAddress: {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          address: formData.address,
+          city: formData.city,
+          region: formData.regions,
+          locality: formData.locality,
+          country: formData.country,
+          phone: formData.phone,
+          email: formData.email,
+        },
+        paymentMethod: "paystack",
+        paymentStatus: "pending",
+        customerName: `${formData.firstName} ${formData.lastName}`,
+        customerEmail: formData.email,
+        customerPhone: formData.phone,
+        createdAt: currentTimestamp, // Use serverTimestamp here
+        orderId: newOrderId,
+        userEmail: formData.email,
+        // Add a date field for easier querying
         orderDate: new Date().toISOString(),
       };
 
-      // Save order to localStorage (simulating backend)
-      localStorage.setItem(
-        "beauty-store-last-order",
-        JSON.stringify(orderData)
+      const orderRef = await addDoc(collection(db, "orders"), orderData);
+      const tempId = orderRef.id;
+
+      setTempOrderId(tempId);
+      tempOrderIdRef.current = tempId;
+
+      await addDoc(collection(db, "users", currentUserId, "orders"), {
+        ...orderData,
+        tempId: tempId,
+        status: "pending_payment",
+      });
+
+      sessionStorage.setItem(
+        "pendingOrder",
+        JSON.stringify({
+          ...orderData,
+          tempId: tempId,
+          cartItems,
+          currentUserId,
+        })
       );
 
-      // Clear cart
-      localStorage.removeItem("beauty-store-cart");
-
-      // Redirect to confirmation page
-      router.push("/checkout/confirmation");
-    } catch (error) {
-      console.error("Error placing order:", error);
-      alert("There was an error placing your order. Please try again.");
+      return tempId;
+    } catch (error: unknown) {
+      console.error("Error creating temp order:", error);
+      throw error;
     }
   };
 
+  const updateOrderAfterPayment = async (
+    paymentReference: string,
+    paymentResponse: PaystackResponse,
+    tempId: string,
+    userId: string
+  ) => {
+    if (!tempId || !userId) {
+      console.error("Missing tempOrderId or currentUserId in callback");
+
+      // Try to recover from session storage
+      const pendingOrder = sessionStorage.getItem("pendingOrder");
+      if (pendingOrder) {
+        const orderData = JSON.parse(pendingOrder);
+        tempId = orderData.tempId;
+        userId = orderData.currentUserId;
+
+        if (!tempId || !userId) {
+          throw new Error("Cannot recover order data from session storage");
+        }
+      } else {
+        throw new Error("Missing order data and no recovery available");
+      }
+    }
+
+    try {
+      const orderRef = doc(db, "orders", tempId);
+
+      // Get current timestamp for consistent date
+      const currentTimestamp = serverTimestamp();
+
+      const updateData: Partial<OrderUpdateData> = {
+        paymentStatus: "completed",
+        paymentReference,
+        paymentDate: currentTimestamp,
+        status: "processing",
+        confirmedAt: currentTimestamp,
+        updatedAt: currentTimestamp,
+        transactionId: paymentResponse.transaction || undefined,
+        transactionReference: paymentResponse.reference || undefined,
+        currency: paymentResponse.currency || "GHS",
+        channel: paymentResponse.channel || undefined,
+      };
+
+      // Safely add optional fields
+      if (paymentResponse.transaction) {
+        updateData.transactionId = paymentResponse.transaction;
+      }
+
+      if (paymentResponse.reference) {
+        updateData.transactionReference = paymentResponse.reference;
+      }
+
+      updateData.currency = paymentResponse.currency || "GHS";
+
+      if (paymentResponse.channel) {
+        updateData.channel = paymentResponse.channel;
+      }
+
+      console.log("Updating main order with data:", {
+        tempId,
+        userId,
+        updateData,
+      });
+
+      // Update main order document
+      await updateDoc(orderRef, updateData);
+
+      // ALSO update the order in user's orders subcollection
+      try {
+        const userOrdersRef = collection(db, "users", userId, "orders");
+        const userOrdersSnapshot = await getDocs(userOrdersRef);
+
+        let userOrderId: string | null = null;
+        userOrdersSnapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.tempId === tempId) {
+            userOrderId = doc.id;
+          }
+        });
+
+        if (userOrderId) {
+          const userOrderRef = doc(db, "users", userId, "orders", userOrderId);
+          await updateDoc(userOrderRef, {
+            paymentStatus: "completed",
+            paymentReference: paymentReference,
+            paymentDate: currentTimestamp,
+            status: "processing",
+            confirmedAt: currentTimestamp,
+            updatedAt: currentTimestamp,
+            transactionId: paymentResponse.transaction || "",
+            transactionReference: paymentResponse.reference || paymentReference,
+            currency: paymentResponse.currency || "GHS",
+            channel: paymentResponse.channel || "",
+          } as Partial<OrderUpdateData>);
+
+          console.log("Updated user's order subcollection");
+        } else {
+          console.warn("Could not find user's order document to update");
+
+          // Create a new entry in user's orders if not found
+          const newUserOrderData = {
+            orderId: tempId,
+            tempId: tempId,
+            userId: userId,
+            items: cartItemsRef.current,
+            totalAmount: finalTotal,
+            subtotal: totalPrice,
+            shippingFee,
+            tax: 0,
+            status: "processing",
+            shippingAddress: {
+              firstName: formData.firstName,
+              lastName: formData.lastName,
+              address: formData.address,
+              city: formData.city,
+              region: formData.regions,
+              locality: formData.locality,
+              country: formData.country,
+              phone: formData.phone,
+              email: formData.email,
+            },
+            paymentMethod: "paystack",
+            paymentStatus: "completed",
+            paymentReference: paymentReference,
+            paymentDate: currentTimestamp,
+            customerName: `${formData.firstName} ${formData.lastName}`,
+            customerEmail: formData.email,
+            customerPhone: formData.phone,
+            createdAt: currentTimestamp,
+            confirmedAt: currentTimestamp,
+            updatedAt: currentTimestamp,
+            transactionId: paymentResponse.transaction || "",
+            transactionReference: paymentResponse.reference || paymentReference,
+            currency: paymentResponse.currency || "GHS",
+            channel: paymentResponse.channel || "",
+            userEmail: formData.email,
+          };
+
+          await addDoc(
+            collection(db, "users", userId, "orders"),
+            newUserOrderData
+          );
+          console.log("Created new order in user's subcollection");
+        }
+      } catch (userUpdateError) {
+        console.error("Error updating user's order:", userUpdateError);
+      }
+
+      // Clear cart items
+      if (userId && cartItemsRef.current.length > 0) {
+        const batch = writeBatch(db);
+        cartItemsRef.current.forEach((item) => {
+          const cartItemRef = doc(db, "users", userId, "cart", item.id);
+          batch.delete(cartItemRef);
+        });
+        await batch.commit();
+        console.log("Cart cleared successfully");
+      }
+
+      setOrderId(tempId);
+      setPaymentSuccess(true);
+      sessionStorage.removeItem("pendingOrder");
+
+      setCartItems([]);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error("Error updating order after payment:", error);
+        console.error("Error details:", {
+          message: error.message,
+          tempId,
+          userId,
+        });
+      } else {
+        console.error("Unknown error updating order:", error);
+      }
+
+      throw error;
+    }
+  };
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value, type } = e.target;
+    if (type === "checkbox") {
+      const checked = (e.target as HTMLInputElement).checked;
+      setFormData((prev) => ({ ...prev, [name]: checked }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleNextStep = async () => {
+    if (activeStep === 1) {
+      const requiredFields = [
+        "firstName",
+        "lastName",
+        "email",
+        "phone",
+        "regions",
+        "city",
+        "locality",
+      ];
+      const missingFields = requiredFields.filter(
+        (field) => !formData[field as keyof FormData]
+      );
+
+      if (missingFields.length > 0) {
+        alert(
+          `Please fill in all required fields: ${missingFields.join(", ")}`
+        );
+        return;
+      }
+    }
+
+    if (activeStep < 3) {
+      setActiveStep(activeStep + 1);
+
+      // Load Paystack script when moving to payment step
+      if (activeStep === 1) {
+        loadPaystackScript();
+      }
+    }
+  };
+
+  const handlePreviousStep = () => {
+    if (activeStep > 1) {
+      setActiveStep(activeStep - 1);
+    }
+  };
+
+  const onPaymentSuccess = async (response: PaystackResponse) => {
+    console.log("Paystack success response received");
+
+    // Use refs instead of state to ensure we have the latest values
+    const tempId = tempOrderIdRef.current;
+    const userId = currentUserIdRef.current;
+    const items = cartItemsRef.current;
+
+    console.log("Callback data:", {
+      tempId,
+      userId,
+      hasItems: items.length > 0,
+      responseReference: response.reference,
+    });
+
+    try {
+      await updateOrderAfterPayment(
+        response.reference,
+        response,
+        tempId,
+        userId
+      );
+
+      setPaymentSuccess(true);
+      setProcessing(false);
+
+      setOrderId(tempId);
+
+      setCartItems([]);
+
+      setTimeout(() => {
+        router.push("/orders?payment=success");
+      }, 3000);
+    } catch (error: unknown) {
+      console.error("Error processing payment success:", error);
+      setProcessing(false);
+
+      if (
+        error instanceof Error &&
+        error.message.includes("Missing order data")
+      ) {
+        alert(
+          "Payment was successful but we couldn't find your order data. Please contact support with your payment reference."
+        );
+      } else {
+        alert(
+          "Payment was successful but there was an error updating your order. Please contact support."
+        );
+      }
+    }
+  };
+
+  const onPaymentFailed = (response: PaystackResponse) => {
+    console.error("Payment failed:", response);
+    setProcessing(false);
+    alert(`Payment failed: ${response.message || "Please try again"}`);
+  };
+
+  const handlePayment = async () => {
+    if (
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.email ||
+      !formData.phone
+    ) {
+      alert("Please complete your shipping information.");
+      setActiveStep(1);
+      return;
+    }
+
+    if (!currentUserId) {
+      alert("Please log in to complete your order.");
+      router.push("/login");
+      return;
+    }
+
+    if (!paystackLoaded) {
+      alert("Payment gateway is loading. Please wait.");
+      return;
+    }
+
+    if (!window.PaystackPop) {
+      alert("Payment service unavailable.");
+      return;
+    }
+
+    if (!paystackPublicKey) {
+      alert("Payment configuration error.");
+      return;
+    }
+
+    setProcessing(true);
+
+    try {
+      const tempId = await createTempOrder();
+
+      tempOrderIdRef.current = tempId;
+
+      const reference = `HAY-${Math.floor(10000 + Math.random() * 90000)}`;
+
+      const paystackConfig: PaystackOptions = {
+        key: paystackPublicKey,
+        email: formData.email,
+        amount: Math.round(finalTotal * 100),
+        ref: reference,
+        currency: "GHS",
+        metadata: {
+          order_id: tempId,
+          customer_name: `${formData.firstName} ${formData.lastName}`,
+          customer_phone: formData.phone,
+          items_count: itemCount,
+          shipping_city: formData.city,
+          shipping_region: formData.regions,
+        },
+        callback: (response: PaystackResponse) => {
+          console.log("Paystack callback triggered");
+          console.log("Current ref values:", {
+            tempOrderIdRef: tempOrderIdRef.current,
+            currentUserIdRef: currentUserIdRef.current,
+          });
+
+          if (response.status === "success") {
+            onPaymentSuccess(response);
+          } else {
+            onPaymentFailed(response);
+          }
+        },
+        onClose: () => {
+          console.log("Payment modal closed by user");
+          setProcessing(false);
+        },
+      };
+
+      const handler = window.PaystackPop.setup(paystackConfig);
+      handler.openIframe();
+    } catch (error) {
+      console.error("Error initiating payment:", error);
+      setProcessing(false);
+      alert("Error preparing payment. Please try again.");
+    }
+  };
+
+  const steps = [
+    { id: 1, name: "Shipping", icon: <FiTruck /> },
+    { id: 2, name: "Payment", icon: <FiCreditCard /> },
+    { id: 3, name: "Review", icon: <FiCheckCircle /> },
+  ];
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#faf7f5] to-white">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#e39a89] mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading your cart...</p>
+          <div className="w-16 h-16 border-4 border-[#d87a6a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">
+            Loading your cart...
+          </p>
         </div>
       </div>
     );
   }
 
-  if (cartItems.length === 0) {
+  if (cartItems.length === 0 && !paymentSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#faf7f5] to-white">
-        <div className="container mx-auto px-4 md:px-6 py-16">
-          <div className="max-w-2xl mx-auto text-center">
-            <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-6">
-              <FiAlertCircle className="w-12 h-12 text-gray-400" />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <FiTruck className="w-24 h-24 text-gray-300 dark:text-gray-700 mx-auto mb-6" />
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+            Your cart is empty
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-8">
+            Add items to your cart before proceeding to checkout.
+          </p>
+          <button
+            onClick={() => router.push("/cart")}
+            className="px-8 py-3 bg-[#d87a6a] text-white rounded-xl hover:bg-[#c76a5a] transition-colors font-medium"
+          >
+            Return to Cart
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (paymentSuccess) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-16">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-8 text-center">
+            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center">
+              <FiCheckCircle className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-4">
-              Your cart is empty
-            </h1>
-            <p className="text-gray-600 mb-8">
-              Add some beautiful products to your cart before checking out.
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              Payment Successful!
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-2">
+              Your order has been placed successfully.
             </p>
-            <Link
-              href="/collections/all"
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-[#e39a89] to-[#d87a6a] text-white px-8 py-3 rounded-xl font-semibold text-lg hover:opacity-90 transition-opacity"
-            >
-              Continue Shopping
-              <FiChevronRight className="w-5 h-5" />
-            </Link>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">
+              Order ID: <span className="font-mono font-bold">{orderId}</span>
+            </p>
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6 mb-8 max-w-md mx-auto">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
+                Order Summary
+              </h3>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Items ({itemCount})</span>
+                  <span>₵{totalPrice.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Shipping</span>
+                  <span>₵{shippingFee.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                  <span>Total</span>
+                  <span>₵{finalTotal.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={() => router.push("/orders")}
+                className="px-6 py-3 bg-[#d87a6a] text-white rounded-lg hover:bg-[#c76a5a] transition-colors"
+              >
+                View Orders
+              </button>
+              <button
+                onClick={() => router.push("/")}
+                className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              >
+                Continue Shopping
+              </button>
+            </div>
+            <p className="text-gray-500 dark:text-gray-500 text-sm mt-6">
+              A confirmation email has been sent to {formData.email}
+            </p>
           </div>
         </div>
       </div>
@@ -294,727 +764,514 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#faf7f5] to-white">
-      {/* Progress Bar */}
-      <div className="bg-white shadow-sm">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="flex items-center justify-between py-6">
-            <div className="flex items-center gap-8">
-              {[1, 2, 3].map((stepNumber) => (
-                <div key={stepNumber} className="flex items-center gap-3">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Hero Section */}
+      <section className="relative bg-gradient-to-br from-[#d87a6a]/10 via-white to-[#fcefe9] dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-12 md:py-16">
+        <div className="relative container mx-auto px-4">
+          <div className="max-w-3xl mx-auto text-center">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              Secure Checkout
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300">
+              Complete your order with secure payment
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto">
+          {/* Progress Steps */}
+          <div className="mb-12">
+            <div className="flex items-center justify-center">
+              {steps.map((step, index) => (
+                <div key={step.id} className="flex items-center">
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      step >= stepNumber
-                        ? "bg-gradient-to-r from-[#e39a89] to-[#d87a6a] text-white"
-                        : "bg-gray-100 text-gray-400"
+                    className={`flex items-center justify-center w-12 h-12 rounded-full border-2 ${
+                      activeStep >= step.id
+                        ? "bg-[#d87a6a] border-[#d87a6a] text-white"
+                        : "border-gray-300 dark:border-gray-700"
                     }`}
                   >
-                    {step > stepNumber ? (
-                      <FiCheck className="w-4 h-4" />
-                    ) : (
-                      stepNumber
-                    )}
+                    {step.icon}
                   </div>
-                  <span
-                    className={`hidden md:inline ${
-                      step >= stepNumber
-                        ? "text-gray-800 font-medium"
-                        : "text-gray-400"
-                    }`}
-                  >
-                    {stepNumber === 1
-                      ? "Delivery"
-                      : stepNumber === 2
-                      ? "Payment"
-                      : "Review"}
-                  </span>
-                  {stepNumber < 3 && (
+                  <div className="ml-4">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Step {step.id}
+                    </p>
+                    <p className="font-medium">{step.name}</p>
+                  </div>
+                  {index < steps.length - 1 && (
                     <div
-                      className={`hidden md:block w-16 h-0.5 ${
-                        step > stepNumber
-                          ? "bg-gradient-to-r from-[#e39a89] to-[#d87a6a]"
-                          : "bg-gray-200"
+                      className={`h-0.5 w-16 mx-4 ${
+                        activeStep > step.id
+                          ? "bg-[#d87a6a]"
+                          : "bg-gray-300 dark:bg-gray-700"
                       }`}
-                    ></div>
+                    />
                   )}
                 </div>
               ))}
             </div>
-
-            <div className="flex items-center gap-2 text-gray-600">
-              <FiLock className="w-5 h-5" />
-              <span className="text-sm font-medium">Secure Checkout</span>
-            </div>
           </div>
-        </div>
-      </div>
 
-      <div className="container mx-auto px-4 md:px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Form */}
-          <div className="lg:col-span-2">
-            {/* Step 1: Delivery Information */}
-            {step === 1 && (
-              <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
-                <h2 className="text-2xl font-bold text-gray-800 mb-2 flex items-center gap-3">
-                  <FiUser className="w-6 h-6 text-[#e39a89]" />
-                  Delivery Information
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  Enter your delivery details
-                </p>
-
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label
-                        className="block text-gray-700 mb-2"
-                        htmlFor="firstName"
-                      >
-                        First Name *
-                      </label>
-                      <input
-                        type="text"
-                        id="firstName"
-                        name="firstName"
-                        value={formData.firstName}
-                        onChange={handleInputChange}
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#e39a89] ${
-                          formErrors.firstName
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        }`}
-                        placeholder="John"
-                      />
-                      {formErrors.firstName && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {formErrors.firstName}
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label
-                        className="block text-gray-700 mb-2"
-                        htmlFor="lastName"
-                      >
-                        Last Name *
-                      </label>
-                      <input
-                        type="text"
-                        id="lastName"
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleInputChange}
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#e39a89] ${
-                          formErrors.lastName
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        }`}
-                        placeholder="Doe"
-                      />
-                      {formErrors.lastName && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {formErrors.lastName}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label
-                        className="block text-gray-700 mb-2"
-                        htmlFor="email"
-                      >
-                        Email Address *
-                      </label>
-                      <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#e39a89] ${
-                          formErrors.email
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        }`}
-                        placeholder="john@example.com"
-                      />
-                      {formErrors.email && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {formErrors.email}
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label
-                        className="block text-gray-700 mb-2"
-                        htmlFor="phone"
-                      >
-                        Phone Number *
-                      </label>
-                      <input
-                        type="tel"
-                        id="phone"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#e39a89] ${
-                          formErrors.phone
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        }`}
-                        placeholder="024 123 4567"
-                      />
-                      {formErrors.phone && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {formErrors.phone}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* Checkout Form */}
+            <div className="lg:col-span-2">
+              <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 md:p-8 mb-8">
+                {activeStep === 1 && (
                   <div>
-                    <label
-                      className="block text-gray-700 mb-2"
-                      htmlFor="address"
-                    >
-                      Delivery Address *
-                    </label>
-                    <textarea
-                      id="address"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      rows={3}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#e39a89] ${
-                        formErrors.address
-                          ? "border-red-500"
-                          : "border-gray-300"
-                      }`}
-                      placeholder="House number, Street name, Landmark"
-                    />
-                    {formErrors.address && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {formErrors.address}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                      <label
-                        className="block text-gray-700 mb-2"
-                        htmlFor="city"
-                      >
-                        City/Town *
-                      </label>
-                      <input
-                        type="text"
-                        id="city"
-                        name="city"
-                        value={formData.city}
-                        onChange={handleInputChange}
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#e39a89] ${
-                          formErrors.city ? "border-red-500" : "border-gray-300"
-                        }`}
-                        placeholder="Accra"
-                      />
-                      {formErrors.city && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {formErrors.city}
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label
-                        className="block text-gray-700 mb-2"
-                        htmlFor="region"
-                      >
-                        Region *
-                      </label>
-                      <select
-                        id="region"
-                        name="region"
-                        value={formData.region}
-                        onChange={handleInputChange}
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#e39a89] ${
-                          formErrors.region
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        }`}
-                      >
-                        <option value="">Select Region</option>
-                        {regions.map((region) => (
-                          <option key={region} value={region}>
-                            {region}
-                          </option>
-                        ))}
-                      </select>
-                      {formErrors.region && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {formErrors.region}
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label
-                        className="block text-gray-700 mb-2"
-                        htmlFor="postalCode"
-                      >
-                        Postal Code
-                      </label>
-                      <input
-                        type="text"
-                        id="postalCode"
-                        name="postalCode"
-                        value={formData.postalCode}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#e39a89]"
-                        placeholder="GA123"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label
-                      className="block text-gray-700 mb-2"
-                      htmlFor="deliveryNotes"
-                    >
-                      Delivery Notes (Optional)
-                    </label>
-                    <textarea
-                      id="deliveryNotes"
-                      name="deliveryNotes"
-                      value={formData.deliveryNotes}
-                      onChange={handleInputChange}
-                      rows={2}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#e39a89]"
-                      placeholder="Special instructions for delivery"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Delivery & Payment Options */}
-            {step === 2 && (
-              <div className="space-y-8">
-                {/* Delivery Options */}
-                <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-                    <FiTruck className="w-6 h-6 text-[#e39a89]" />
-                    Delivery Method
-                  </h2>
-
-                  <div className="space-y-4">
-                    {deliveryOptions.map((option) => (
-                      <div
-                        key={option.id}
-                        onClick={() => setSelectedDelivery(option.id)}
-                        className={`border-2 rounded-xl p-4 cursor-pointer transition-all duration-200 ${
-                          selectedDelivery === option.id
-                            ? "border-[#e39a89] bg-[#e39a89]/5"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="font-semibold text-gray-800">
-                              {option.name}
-                            </h3>
-                            <p className="text-gray-600 text-sm mt-1">
-                              {option.description}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-bold text-gray-800">
-                              ₵{option.price.toFixed(2)}
-                            </div>
-                            <div className="text-gray-500 text-sm">
-                              {option.estimatedDays}
-                            </div>
-                          </div>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+                      Shipping Information
+                    </h2>
+                    <div className="mb-8 bg-gradient-to-r from-[#d87a6a]/5 to-[#c76a5a]/5 rounded-2xl p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                        Contact Information
+                      </h3>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <FiUser className="w-4 h-4" />
+                            First Name *
+                          </label>
+                          <input
+                            type="text"
+                            name="firstName"
+                            value={formData.firstName}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#d87a6a] focus:border-transparent"
+                            placeholder="Enter your first name"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <FiUser className="w-4 h-4" />
+                            Last Name *
+                          </label>
+                          <input
+                            type="text"
+                            name="lastName"
+                            value={formData.lastName}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#d87a6a] focus:border-transparent"
+                            placeholder="Enter your last name"
+                            required
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <FiMail className="w-4 h-4" />
+                            Email Address *
+                          </label>
+                          <input
+                            type="email"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#d87a6a] focus:border-transparent"
+                            required
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <FiPhone className="w-4 h-4" />
+                            Phone Number *
+                          </label>
+                          <input
+                            type="tel"
+                            name="phone"
+                            value={formData.phone}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#d87a6a] focus:border-transparent"
+                            placeholder="0543456789"
+                            required
+                          />
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
 
-                {/* Payment Methods */}
-                <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-                    <FiCreditCard className="w-6 h-6 text-[#e39a89]" />
-                    Payment Method
-                  </h2>
-
-                  <div className="space-y-4">
-                    {paymentMethods.map((method) => (
-                      <div
-                        key={method.id}
-                        onClick={() => setSelectedPayment(method.id)}
-                        className={`border-2 rounded-xl p-4 cursor-pointer transition-all duration-200 ${
-                          selectedPayment === method.id
-                            ? "border-[#e39a89] bg-[#e39a89]/5"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-2xl">
-                            {method.icon}
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-gray-800">
-                              {method.name}
-                            </h3>
-                            <p className="text-gray-600 text-sm mt-1">
-                              {method.description}
-                            </p>
-                          </div>
-                          <div
-                            className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                              selectedPayment === method.id
-                                ? "border-[#e39a89] bg-[#e39a89]"
-                                : "border-gray-300"
-                            }`}
+                    <div className="bg-gradient-to-r from-[#d87a6a]/5 to-[#c76a5a]/5 rounded-2xl p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                        Shipping Address
+                      </h3>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="md:col-span-2">
+                          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <FiMapPin className="w-4 h-4" />
+                            Region *
+                          </label>
+                          <select
+                            name="regions"
+                            value={formData.regions}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#d87a6a] focus:border-transparent "
+                            required
                           >
-                            {selectedPayment === method.id && (
-                              <FiCheck className="w-3 h-3 text-white" />
-                            )}
-                          </div>
+                            <option value="" className="text-black">
+                              Select Region
+                            </option>
+                            <option
+                              value="Greater Accra"
+                              className="text-black"
+                            >
+                              Greater Accra
+                            </option>
+                            <option value="Ashanti" className="text-black">
+                              Ashanti
+                            </option>
+                            <option value="Eastern" className="text-black">
+                              Eastern
+                            </option>
+                            <option value="Western" className="text-black">
+                              Western
+                            </option>
+                            <option value="Central" className="text-black">
+                              Central
+                            </option>
+                            <option value="Volta" className="text-black">
+                              Volta
+                            </option>
+                            <option value="Northern" className="text-black">
+                              Northern
+                            </option>
+                            <option value="Upper East" className="text-black">
+                              Upper East
+                            </option>
+                            <option value="Upper West" className="text-black">
+                              Upper West
+                            </option>
+                            <option value="Bono" className="text-black">
+                              Bono
+                            </option>
+                            <option value="Ahafo" className="text-black">
+                              Ahafo
+                            </option>
+                            <option value="Savannah" className="text-black">
+                              Savannah
+                            </option>
+                            <option value="North East" className="text-black">
+                              North East
+                            </option>
+                            <option value="Oti" className="text-black">
+                              Oti
+                            </option>
+                            <option
+                              value="Western North"
+                              className="text-black"
+                            >
+                              Western North
+                            </option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            City/Town *
+                          </label>
+                          <input
+                            type="text"
+                            name="city"
+                            value={formData.city}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#d87a6a] focus:border-transparent"
+                            placeholder="e.g Accra, Kumasi, Tamale"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Area/Locality *
+                          </label>
+                          <input
+                            type="text"
+                            name="locality"
+                            value={formData.locality}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#d87a6a] focus:border-transparent"
+                            placeholder="e.g Dungu, Abuakwa, Madina"
+                            required
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Detailed Address(optional)
+                          </label>
+                          <input
+                            type="text"
+                            name="address"
+                            value={formData.address}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#d87a6a] focus:border-transparent"
+                            placeholder="House number, Street name, Landmark"
+                          />
                         </div>
                       </div>
-                    ))}
+                    </div>
                   </div>
+                )}
 
-                  {/* Payment Security */}
-                  <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <FiLock className="w-5 h-5 text-green-500" />
+                {activeStep === 2 && (
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+                      Payment Method
+                    </h2>
+
+                    <div className="mb-8 p-6 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl border border-blue-200 dark:border-blue-800">
+                      <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                        <FiCreditCard className="w-5 h-5 text-[#d87a6a]" />
+                        Secure Payment with Paystack
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                        Pay securely with card, mobile money, or bank transfer.
+                        All payments are processed through Paystack&apos;s
+                        secure payment gateway.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="px-3 py-1 bg-white dark:bg-gray-800 text-xs font-medium rounded-full border">
+                          Visa/Mastercard
+                        </span>
+                        <span className="px-3 py-1 bg-white dark:bg-gray-800 text-xs font-medium rounded-full border">
+                          Mobile Money
+                        </span>
+                        <span className="px-3 py-1 bg-white dark:bg-gray-800 text-xs font-medium rounded-full border">
+                          Bank Transfer
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Security Badge */}
+                    <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-800">
+                      <FiLock className="w-5 h-5 text-green-600 dark:text-green-400" />
                       <div>
-                        <p className="font-medium text-gray-800">
-                          Secure Payment
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          Bank-Level Security
                         </p>
-                        <p className="text-gray-600 text-sm">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
                           Your payment information is encrypted and secure
                         </p>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
+                )}
 
-            {/* Step 3: Review Order */}
-            {step === 3 && (
-              <div className="space-y-8">
-                {/* Order Summary */}
-                <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-6">
-                    Review Your Order
-                  </h2>
+                {activeStep === 3 && (
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+                      Order Review
+                    </h2>
 
-                  {/* Delivery Information Review */}
-                  <div className="mb-8">
-                    <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                      <FiUser className="w-5 h-5" />
-                      Delivery Details
-                    </h3>
-                    <div className="bg-gray-50 rounded-xl p-4">
-                      <p className="font-medium text-gray-800">
-                        {formData.firstName} {formData.lastName}
-                      </p>
-                      <p className="text-gray-600 mt-1">{formData.email}</p>
-                      <p className="text-gray-600">{formData.phone}</p>
-                      <p className="text-gray-600 mt-2">{formData.address}</p>
-                      <p className="text-gray-600">
-                        {formData.city}, {formData.region} {formData.postalCode}
-                      </p>
-                      <button
-                        onClick={() => setStep(1)}
-                        className="mt-3 text-[#e39a89] hover:text-[#d87a6a] font-medium text-sm"
-                      >
-                        Edit Details
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Delivery Method Review */}
-                  <div className="mb-8">
-                    <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                      <FiTruck className="w-5 h-5" />
-                      Delivery Method
-                    </h3>
-                    <div className="bg-gray-50 rounded-xl p-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="font-medium text-gray-800">
-                            {
-                              deliveryOptions.find(
-                                (d) => d.id === selectedDelivery
-                              )?.name
-                            }
-                          </p>
-                          <p className="text-gray-600 text-sm mt-1">
-                            {
-                              deliveryOptions.find(
-                                (d) => d.id === selectedDelivery
-                              )?.estimatedDays
-                            }
-                          </p>
+                    <div className="space-y-6">
+                      {/* Shipping Information */}
+                      <div className="bg-gradient-to-r from-[#d87a6a]/5 to-[#c76a5a]/5 rounded-2xl p-6">
+                        <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+                          Shipping Information
+                        </h3>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Name
+                            </p>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {formData.firstName} {formData.lastName}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Email
+                            </p>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {formData.email}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Phone
+                            </p>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {formData.phone}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Region
+                            </p>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {formData.regions}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              City
+                            </p>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {formData.city}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Area
+                            </p>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {formData.locality}
+                            </p>
+                          </div>
                         </div>
-                        <button
-                          onClick={() => setStep(2)}
-                          className="text-[#e39a89] hover:text-[#d87a6a] font-medium text-sm"
-                        >
-                          Change
-                        </button>
+                      </div>
+
+                      {/* Order Items */}
+                      <div>
+                        <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
+                          Order Items ({itemCount})
+                        </h3>
+                        <div className="space-y-3">
+                          {cartItems.map((item) => (
+                            <div
+                              key={item.id}
+                              className="flex justify-between items-center bg-white dark:bg-gray-700 p-4 rounded-xl"
+                            >
+                              <div className="flex-1">
+                                <p className="font-medium text-gray-900 dark:text-white">
+                                  {item.name}
+                                </p>
+                                <p className="text-sm text-gray-500">
+                                  Qty: {item.quantity} × ₵
+                                  {item.price.toFixed(2)}
+                                </p>
+                              </div>
+                              <p className="font-semibold text-gray-900 dark:text-white">
+                                ₵{(item.price * item.quantity).toFixed(2)}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
+                )}
 
-                  {/* Payment Method Review */}
-                  <div className="mb-8">
-                    <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                      <FiCreditCard className="w-5 h-5" />
-                      Payment Method
-                    </h3>
-                    <div className="bg-gray-50 rounded-xl p-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="font-medium text-gray-800">
-                            {
-                              paymentMethods.find(
-                                (p) => p.id === selectedPayment
-                              )?.name
-                            }
-                          </p>
-                          <p className="text-gray-600 text-sm mt-1">
-                            {
-                              paymentMethods.find(
-                                (p) => p.id === selectedPayment
-                              )?.description
-                            }
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => setStep(2)}
-                          className="text-[#e39a89] hover:text-[#d87a6a] font-medium text-sm"
-                        >
-                          Change
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                {/* Navigation Buttons */}
+                <div className="flex justify-between mt-8 pt-6 border-t">
+                  {activeStep > 1 ? (
+                    <button
+                      onClick={handlePreviousStep}
+                      className="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                    >
+                      <FiArrowLeft className="mr-2" />
+                      Back
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => router.push("/cart")}
+                      className="flex items-center px-6 py-3 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                    >
+                      <FiArrowLeft className="mr-2" />
+                      Return to Cart
+                    </button>
+                  )}
 
-                  {/* Terms & Conditions */}
-                  <div className="mt-8">
-                    <div className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        id="agreeTerms"
-                        checked={agreeTerms}
-                        onChange={(e) => setAgreeTerms(e.target.checked)}
-                        className="mt-1"
-                      />
-                      <label
-                        htmlFor="agreeTerms"
-                        className="text-gray-700 text-sm"
-                      >
-                        I agree to the{" "}
-                        <Link
-                          href="/terms"
-                          className="text-[#e39a89] hover:underline"
-                        >
-                          Terms and Conditions
-                        </Link>{" "}
-                        and{" "}
-                        <Link
-                          href="/privacy"
-                          className="text-[#e39a89] hover:underline"
-                        >
-                          Privacy Policy
-                        </Link>
-                        . I understand that my order is subject to verification
-                        and confirmation.
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Navigation Buttons */}
-            <div className="flex justify-between mt-8">
-              {step > 1 ? (
-                <button
-                  onClick={handlePrevStep}
-                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Back
-                </button>
-              ) : (
-                <Link
-                  href="/cart"
-                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Back to Cart
-                </Link>
-              )}
-
-              {step < 3 ? (
-                <button
-                  onClick={handleNextStep}
-                  className="px-8 py-3 bg-gradient-to-r from-[#e39a89] to-[#d87a6a] text-white rounded-lg font-medium hover:opacity-90 transition-opacity"
-                >
-                  Continue to {step === 1 ? "Delivery & Payment" : "Review"}
-                </button>
-              ) : (
-                <button
-                  onClick={handlePlaceOrder}
-                  disabled={!agreeTerms}
-                  className="px-8 py-3 bg-gradient-to-r from-[#e39a89] to-[#d87a6a] text-white rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Place Order • ₵{total.toFixed(2)}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Right Column - Order Summary */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-24">
-              <h2 className="text-xl font-bold text-gray-800 mb-6">
-                Order Summary
-              </h2>
-
-              {/* Cart Items */}
-              <div className="space-y-4 mb-6 max-h-80 overflow-y-auto pr-2">
-                {cartItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex gap-4 pb-4 border-b border-gray-100 last:border-0"
-                  >
-                    <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                      {item.imageUrl ? (
-                        <Image
-                          src={item.imageUrl}
-                          alt={item.name}
-                          width={80}
-                          height={80}
-                          className="w-full h-full object-cover"
-                        />
+                  {activeStep < 3 ? (
+                    <button
+                      onClick={handleNextStep}
+                      className="px-6 py-3 bg-[#d87a6a] text-white rounded-xl hover:bg-[#c76a5a] transition-colors font-medium"
+                    >
+                      Continue to {activeStep === 1 ? "Payment" : "Review"}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handlePayment}
+                      disabled={processing || !paystackLoaded}
+                      className="px-8 py-3 bg-gradient-to-r from-[#d87a6a] to-[#c76a5a] text-white rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 font-medium shadow-lg"
+                    >
+                      {processing ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Processing Payment...
+                        </>
+                      ) : !paystackLoaded ? (
+                        "Loading Gateway..."
                       ) : (
-                        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                          <span className="text-gray-400 text-xs">
-                            No image
-                          </span>
-                        </div>
+                        <>
+                          <FiLock className="w-5 h-5" />
+                          Pay ₵{finalTotal.toFixed(2)} Now
+                        </>
                       )}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-800 line-clamp-1">
-                        {item.name}
-                      </h3>
-                      <p className="text-gray-500 text-sm mt-1">
-                        Qty: {item.quantity}
-                      </p>
-                      <div className="flex justify-between items-center mt-2">
-                        <span className="font-semibold text-gray-800">
-                          ₵{(item.discountedPrice * item.quantity).toFixed(2)}
-                        </span>
-                        {item.discountedPrice < item.price && (
-                          <span className="text-sm line-through text-gray-400">
-                            ₵{(item.price * item.quantity).toFixed(2)}
-                          </span>
-                        )}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
+                <FiLock className="mr-2" />
+                Your payment information is secure and encrypted
+              </div>
+            </div>
+
+            {/* Order Summary */}
+            <div className="space-y-6">
+              <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+                  Order Summary
+                </h3>
+
+                <div className="space-y-4 mb-6">
+                  {cartItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex justify-between items-center pb-4 border-b"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          {item.name}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Qty: {item.quantity}
+                        </p>
                       </div>
+                      <p className="font-semibold text-gray-900 dark:text-white">
+                        ₵{(item.price * item.quantity).toFixed(2)}
+                      </p>
                     </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Order Totals */}
-              <div className="space-y-3">
-                <div className="flex justify-between text-gray-600">
-                  <span>Subtotal</span>
-                  <span>₵{subtotal.toFixed(2)}</span>
+                  ))}
                 </div>
 
-                <div className="flex justify-between text-gray-600">
-                  <span>Delivery</span>
-                  <span>₵{deliveryFee.toFixed(2)}</span>
-                </div>
+                <div className="space-y-3 border-t pt-4">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Subtotal
+                    </span>
+                    <span className="font-medium">
+                      ₵{totalPrice.toFixed(2)}
+                    </span>
+                  </div>
 
-                <div className="border-t border-gray-200 pt-3">
-                  <div className="flex justify-between text-lg font-bold text-gray-800">
-                    <span>Total</span>
-                    <span>₵{total.toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Security & Guarantees */}
-              <div className="mt-8 space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                    <FiLock className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-800 text-sm">
-                      Secure Payment
-                    </p>
-                    <p className="text-gray-500 text-xs">
-                      256-bit SSL encryption
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                    <FiCheck className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-800 text-sm">
-                      Quality Guarantee
-                    </p>
-                    <p className="text-gray-500 text-xs">
-                      100% authentic products
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                    <FiTruck className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-800 text-sm">
-                      Reliable Delivery
-                    </p>
-                    <p className="text-gray-500 text-xs">
-                      Track your order in real-time
-                    </p>
+                  <div className="flex justify-between text-lg font-bold border-t pt-4">
+                    <span>Total Amount</span>
+                    <span className="text-2xl text-[#d87a6a]">
+                      ₵{finalTotal.toFixed(2)}
+                    </span>
                   </div>
                 </div>
               </div>
 
               {/* Need Help */}
-              <div className="mt-8 p-4 bg-gray-50 rounded-xl">
-                <p className="text-gray-700 text-sm">
-                  Need help?{" "}
-                  <Link
-                    href="/contact"
-                    className="text-[#e39a89] hover:underline font-medium"
-                  >
-                    Contact our support team
-                  </Link>
+              <div className="bg-gradient-to-br from-[#d87a6a]/10 to-[#c76a5a]/10 rounded-3xl p-6">
+                <h4 className="font-bold text-gray-900 dark:text-white mb-3">
+                  Need Help?
+                </h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  If you encounter any issues with payment or have questions
+                  about your order, please contact our support team.
                 </p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                    <FiMail className="w-4 h-4" />
+                    <span>yussifhayate@icloud.com</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                    <FiPhone className="w-4 h-4" />
+                    <span>0549188561</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

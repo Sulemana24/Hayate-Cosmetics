@@ -8,6 +8,7 @@ export interface Product {
   discountedPrice: number;
   category: string;
   categorySlug: "skincare" | "fragrance" | "makeup";
+  subCategory?: string;
   quantity: number;
   status: "In Stock" | "Low Stock" | "Out of Stock";
   imageUrl?: string;

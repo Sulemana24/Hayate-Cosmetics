@@ -3,6 +3,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { FiArrowRight } from "react-icons/fi";
+import { useState, useEffect } from "react";
+
+import { db } from "@/lib/firebase";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { Product } from "@/types/product";
 
 // Import category images
 import skincareImg from "@/public/images/catcos.jpg";
@@ -23,12 +28,15 @@ export default function CategoryQuickLinks({
   columns = 4,
   showViewAll = true,
 }: CategoryQuickLinksProps) {
+  const [products, setProducts] = useState<Product[]>([]);
+
+  // ✅ Categories with slug (important)
   const categories = [
     {
       id: 1,
       name: "Skincare",
+      slug: "skincare",
       description: "Organic, cruelty-free skincare",
-      count: "45 Products",
       link: "/category/skincare",
       image: skincareImg,
       color: "from-[#e39a89] to-[#d87a6a]",
@@ -36,8 +44,8 @@ export default function CategoryQuickLinks({
     {
       id: 2,
       name: "Fragrance",
+      slug: "fragrance",
       description: "Premium perfumes & scents",
-      count: "32 Products",
       link: "/category/fragrance",
       image: fragranceImg,
       color: "from-[#1b3c35] to-[#2a4d45]",
@@ -45,22 +53,46 @@ export default function CategoryQuickLinks({
     {
       id: 3,
       name: "Accessories",
+      slug: "accessories",
       description: "Complete your look",
-      count: "28 Products",
-      link: "//category/accessories",
+      link: "/category/accessories",
       image: accessoriesImg,
       color: "from-[#f8b195] to-[#f67280]",
     },
     {
       id: 4,
       name: "Makeup",
+      slug: "makeup",
       description: "Professional cosmetics",
-      count: "56 Products",
       link: "/category/makeup",
       image: makeupImg,
       color: "from-[#6a5acd] to-[#836fff]",
     },
   ];
+
+  // ✅ Fetch products once (same as All Products)
+  useEffect(() => {
+    const fetchProducts = async () => {
+      const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+
+      const data = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Product[];
+
+      setProducts(data);
+    };
+
+    fetchProducts();
+  }, []);
+
+  // ✅ SAME helper used in All Products page
+  const getCategoryCount = (slug: string) => {
+    return products.filter(
+      (p) => p.category.toLowerCase() === slug.toLowerCase()
+    ).length;
+  };
 
   const gridCols = {
     2: "grid-cols-1 sm:grid-cols-2",
@@ -100,13 +132,15 @@ export default function CategoryQuickLinks({
                 />
                 <div
                   className={`absolute inset-0 bg-gradient-to-t ${category.color} opacity-70`}
-                ></div>
+                />
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
                   <h3 className="text-2xl font-bold text-white mb-2">
                     {category.name}
                   </h3>
                   <p className="text-white/90 mb-3">{category.description}</p>
-                  <p className="text-white/80 text-sm">{category.count}</p>
+                  <p className="text-white/80 text-sm">
+                    {getCategoryCount(category.slug)} Products
+                  </p>
                 </div>
               </div>
               <div className="absolute top-4 right-4 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full">
