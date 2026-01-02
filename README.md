@@ -1,8 +1,9 @@
-🛍️ Hayate Cosmetics – Full E-Commerce Platform (Next.js + Firebase + Paystack)
+🛍️ Hayate Cosmetics
+Full-Featured E-Commerce Platform (Next.js • Firebase • Paystack)
 
-Hayate Cosmetics is a full-featured e-commerce platform that helps beauty brands sell online effortlessly. It includes a public shopping website for customers and a secure admin dashboard for managing products, orders, and staff. Payments are handled securely via Paystack, and all data is stored using Firebase & Firestore.
+Hayate Cosmetics is a production-ready e-commerce web application built to help beauty brands sell products online and manage operations efficiently. The platform includes a customer-facing shopping website and a secure admin dashboard for managing products, orders, pricing, and staff access.
 
-The platform is designed to drive smooth shopping experiences and efficient business operations.
+It is designed to deliver a smooth shopping experience for customers while giving business owners full control over sales and inventory.
 
 🛒 Customer-Facing Features
 
@@ -10,13 +11,13 @@ Browse products by category (Lotions, Serums, Facials, Body Oils, Creams, Perfum
 
 View detailed product information
 
-Dark mode toggle for improved UX
+Dark mode toggle for improved user experience
 
-Add products to cart and checkout seamlessly via Paystack
+Add products to cart and complete checkout securely via Paystack
 
-Select delivery region and address
+Select delivery region and shipping address
 
-WhatsApp support floating button for instant help
+WhatsApp floating support button for instant customer assistance
 
 Back-to-top floating button for easy navigation
 
@@ -24,43 +25,52 @@ Order confirmation after successful payment
 
 🧑‍💼 Admin Dashboard Features
 
-Secure admin authentication using Firebase Auth
+Secure admin authentication using Firebase Authentication
 
 Role-based admin access and restrictions
 
-Add, edit, or delete products with image uploads
+Add, edit, and delete products with image uploads
 
-Set original & discounted prices and manage stock quantities
+Set original and discounted prices
 
-View all products and track orders with buyer delivery details
+Manage product stock quantities
 
-Automatic stock reduction after purchase
+View and track customer orders with delivery details
 
-Full admin navbar displaying name & email for easy management
+Automatic stock reduction after successful purchases
+
+Admin navigation displaying logged-in admin name and email
 
 Secure logout for all admin users
 
-Business Value: The admin dashboard empowers brands to manage products, track orders, and drive sales efficiently, while the customer site provides a smooth, conversion-focused shopping experience.
+💼 Business Value
+
+This platform enables beauty brands to sell online efficiently, manage inventory in real time, and track customer orders without manual processes.
+The admin dashboard simplifies daily operations, while the customer site is optimized for conversions, performance, and mobile users.
 
 🧱 Tech Stack
 
 Next.js 16 (App Router) & TypeScript
 
-Tailwind CSS for responsive, modern design
+Tailwind CSS for responsive, modern UI
 
-Firebase Authentication & Cloud Firestore for secure backend
+Firebase Authentication & Cloud Firestore
 
-UploadThing for image storage
+UploadThing for product image uploads
 
-Paystack for payments
-
-Sonner for notifications
+Paystack for secure payments
 
 Zustand for state management
 
+Sonner for notifications
+
 React Icons for UI enhancements
 
-📁 Project Folder Structure
+🔗 Live Demo
+
+👉 https://hayate-cosmetics-fb5u.vercel.app/
+
+📁 Project Structure (Simplified)
 app/
 ├── admin/
 │ ├── dashboard/
@@ -90,6 +100,3 @@ lib/
 ├── firebase.ts
 ├── admin.ts
 └── paystack.ts
-
-public/
-└── assets
