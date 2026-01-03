@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { getAuth } from "firebase/auth";
 import { db } from "@/lib/firebase";
+import { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 import {
   collection,
   getDocs,
@@ -130,7 +131,7 @@ export default function CheckoutPage() {
     (acc, item) => acc + item.price * item.quantity,
     0
   );
-  const shippingFee = totalPrice > 100 ? 0 : 10;
+  const shippingFee = 0;
   const finalTotal = totalPrice + shippingFee;
 
   const itemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -226,245 +227,103 @@ export default function CheckoutPage() {
       throw new Error("User must be logged in to create an order");
     }
 
-    try {
-      const newOrderId = `HAY-${Math.floor(10000 + Math.random() * 90000)}`;
-      const currentTimestamp = serverTimestamp();
+    const now = new Date();
+    const orderCode = `HAY-${Math.floor(10000 + Math.random() * 90000)}`;
 
-      const orderData = {
+    const tempId = orderCode;
+
+    const orderData = {
+      tempId,
+      userId: currentUserId,
+      items: cartItems,
+      totalAmount: finalTotal,
+      subtotal: totalPrice,
+      shippingFee,
+      tax: 0,
+      status: "pending_payment",
+      paymentMethod: "paystack",
+      paymentStatus: "pending",
+      shippingAddress: {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        address: formData.address,
+        city: formData.city,
+        region: formData.regions,
+        locality: formData.locality,
+        country: formData.country,
+        phone: formData.phone,
+        email: formData.email,
+      },
+      customerName: `${formData.firstName} ${formData.lastName}`,
+      customerEmail: formData.email,
+      customerPhone: formData.phone,
+      orderId: orderCode,
+      userEmail: formData.email,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const userOrderRef = await addDoc(
+      collection(db, "users", currentUserId, "orders"),
+      orderData
+    );
+
+    const userOrderId = userOrderRef.id;
+
+    sessionStorage.setItem(
+      "pendingOrder",
+      JSON.stringify({
+        userOrderId,
+        tempId,
         userId: currentUserId,
-        items: cartItems,
-        totalAmount: finalTotal,
-        subtotal: totalPrice,
-        shippingFee,
-        tax: 0,
-        status: "pending_payment",
-        shippingAddress: {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          address: formData.address,
-          city: formData.city,
-          region: formData.regions,
-          locality: formData.locality,
-          country: formData.country,
-          phone: formData.phone,
-          email: formData.email,
-        },
-        paymentMethod: "paystack",
-        paymentStatus: "pending",
-        customerName: `${formData.firstName} ${formData.lastName}`,
-        customerEmail: formData.email,
-        customerPhone: formData.phone,
-        createdAt: currentTimestamp, // Use serverTimestamp here
-        orderId: newOrderId,
-        userEmail: formData.email,
-        // Add a date field for easier querying
-        orderDate: new Date().toISOString(),
-      };
+      })
+    );
 
-      const orderRef = await addDoc(collection(db, "orders"), orderData);
-      const tempId = orderRef.id;
+    setTempOrderId(userOrderId);
+    tempOrderIdRef.current = userOrderId;
 
-      setTempOrderId(tempId);
-      tempOrderIdRef.current = tempId;
-
-      await addDoc(collection(db, "users", currentUserId, "orders"), {
-        ...orderData,
-        tempId: tempId,
-        status: "pending_payment",
-      });
-
-      sessionStorage.setItem(
-        "pendingOrder",
-        JSON.stringify({
-          ...orderData,
-          tempId: tempId,
-          cartItems,
-          currentUserId,
-        })
-      );
-
-      return tempId;
-    } catch (error: unknown) {
-      console.error("Error creating temp order:", error);
-      throw error;
-    }
+    return userOrderId;
   };
 
   const updateOrderAfterPayment = async (
     paymentReference: string,
     paymentResponse: PaystackResponse,
-    tempId: string,
+    userOrderId: string,
     userId: string
   ) => {
-    if (!tempId || !userId) {
-      console.error("Missing tempOrderId or currentUserId in callback");
+    if (!userOrderId || !userId) throw new Error("Missing order reference");
 
-      // Try to recover from session storage
-      const pendingOrder = sessionStorage.getItem("pendingOrder");
-      if (pendingOrder) {
-        const orderData = JSON.parse(pendingOrder);
-        tempId = orderData.tempId;
-        userId = orderData.currentUserId;
+    const now = new Date();
 
-        if (!tempId || !userId) {
-          throw new Error("Cannot recover order data from session storage");
-        }
-      } else {
-        throw new Error("Missing order data and no recovery available");
-      }
-    }
+    const updateData = {
+      paymentStatus: "completed",
+      paymentReference,
+      paymentDate: now,
+      status: "processing",
+      confirmedAt: now,
+      updatedAt: now,
+      transactionId: paymentResponse.transaction || null,
+      transactionReference: paymentResponse.reference || paymentReference,
+      currency: paymentResponse.currency || "GHS",
+      channel: paymentResponse.channel || null,
+    };
 
-    try {
-      const orderRef = doc(db, "orders", tempId);
+    const orderDocRef = doc(db, "users", userId, "orders", userOrderId);
 
-      // Get current timestamp for consistent date
-      const currentTimestamp = serverTimestamp();
+    await updateDoc(orderDocRef, updateData);
 
-      const updateData: Partial<OrderUpdateData> = {
-        paymentStatus: "completed",
-        paymentReference,
-        paymentDate: currentTimestamp,
-        status: "processing",
-        confirmedAt: currentTimestamp,
-        updatedAt: currentTimestamp,
-        transactionId: paymentResponse.transaction || undefined,
-        transactionReference: paymentResponse.reference || undefined,
-        currency: paymentResponse.currency || "GHS",
-        channel: paymentResponse.channel || undefined,
-      };
-
-      // Safely add optional fields
-      if (paymentResponse.transaction) {
-        updateData.transactionId = paymentResponse.transaction;
-      }
-
-      if (paymentResponse.reference) {
-        updateData.transactionReference = paymentResponse.reference;
-      }
-
-      updateData.currency = paymentResponse.currency || "GHS";
-
-      if (paymentResponse.channel) {
-        updateData.channel = paymentResponse.channel;
-      }
-
-      console.log("Updating main order with data:", {
-        tempId,
-        userId,
-        updateData,
+    if (cartItemsRef.current.length > 0) {
+      const batch = writeBatch(db);
+      cartItemsRef.current.forEach((item) => {
+        batch.delete(doc(db, "users", userId, "cart", item.id));
       });
-
-      await updateDoc(orderRef, updateData);
-
-      try {
-        const userOrdersRef = collection(db, "users", userId, "orders");
-        const userOrdersSnapshot = await getDocs(userOrdersRef);
-
-        let userOrderId: string | null = null;
-        userOrdersSnapshot.forEach((doc) => {
-          const data = doc.data();
-          if (data.tempId === tempId) {
-            userOrderId = doc.id;
-          }
-        });
-
-        if (userOrderId) {
-          const userOrderRef = doc(db, "users", userId, "orders", userOrderId);
-          await updateDoc(userOrderRef, {
-            paymentStatus: "completed",
-            paymentReference: paymentReference,
-            paymentDate: currentTimestamp,
-            status: "processing",
-            confirmedAt: currentTimestamp,
-            updatedAt: currentTimestamp,
-            transactionId: paymentResponse.transaction || "",
-            transactionReference: paymentResponse.reference || paymentReference,
-            currency: paymentResponse.currency || "GHS",
-            channel: paymentResponse.channel || "",
-          } as Partial<OrderUpdateData>);
-
-          console.log("Updated user's order subcollection");
-        } else {
-          console.warn("Could not find user's order document to update");
-
-          const newUserOrderData = {
-            orderId: tempId,
-            tempId: tempId,
-            userId: userId,
-            items: cartItemsRef.current,
-            totalAmount: finalTotal,
-            subtotal: totalPrice,
-            shippingFee,
-            tax: 0,
-            status: "processing",
-            shippingAddress: {
-              firstName: formData.firstName,
-              lastName: formData.lastName,
-              address: formData.address,
-              city: formData.city,
-              region: formData.regions,
-              locality: formData.locality,
-              country: formData.country,
-              phone: formData.phone,
-              email: formData.email,
-            },
-            paymentMethod: "paystack",
-            paymentStatus: "completed",
-            paymentReference: paymentReference,
-            paymentDate: currentTimestamp,
-            customerName: `${formData.firstName} ${formData.lastName}`,
-            customerEmail: formData.email,
-            customerPhone: formData.phone,
-            createdAt: currentTimestamp,
-            confirmedAt: currentTimestamp,
-            updatedAt: currentTimestamp,
-            transactionId: paymentResponse.transaction || "",
-            transactionReference: paymentResponse.reference || paymentReference,
-            currency: paymentResponse.currency || "GHS",
-            channel: paymentResponse.channel || "",
-            userEmail: formData.email,
-          };
-
-          await addDoc(
-            collection(db, "users", userId, "orders"),
-            newUserOrderData
-          );
-          console.log("Created new order in user's subcollection");
-        }
-      } catch (userUpdateError) {
-        console.error("Error updating user's order:", userUpdateError);
-      }
-
-      // Clear cart items
-      if (userId && cartItemsRef.current.length > 0) {
-        const batch = writeBatch(db);
-        cartItemsRef.current.forEach((item) => {
-          const cartItemRef = doc(db, "users", userId, "cart", item.id);
-          batch.delete(cartItemRef);
-        });
-        await batch.commit();
-        console.log("Cart cleared successfully");
-      }
-
-      setOrderId(tempId);
-      setPaymentSuccess(true);
-      sessionStorage.removeItem("pendingOrder");
-
-      setCartItems([]);
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        console.error("Error updating order after payment:", error);
-        console.error("Error details:", {
-          message: error.message,
-          tempId,
-          userId,
-        });
-      } else {
-        console.error("Unknown error updating order:", error);
-      }
-
-      throw error;
+      await batch.commit();
     }
+
+    setOrderId(userOrderId);
+    setPaymentSuccess(true);
+    sessionStorage.removeItem("pendingOrder");
+    setCartItems([]);
   };
 
   const handleInputChange = (
@@ -505,7 +364,6 @@ export default function CheckoutPage() {
     if (activeStep < 3) {
       setActiveStep(activeStep + 1);
 
-      // Load Paystack script when moving to payment step
       if (activeStep === 1) {
         loadPaystackScript();
       }
@@ -521,7 +379,6 @@ export default function CheckoutPage() {
   const onPaymentSuccess = async (response: PaystackResponse) => {
     console.log("Paystack success response received");
 
-    // Use refs instead of state to ensure we have the latest values
     const tempId = tempOrderIdRef.current;
     const userId = currentUserIdRef.current;
     const items = cartItemsRef.current;
@@ -646,7 +503,6 @@ export default function CheckoutPage() {
           }
         },
         onClose: () => {
-          console.log("Payment modal closed by user");
           setProcessing(false);
         },
       };
@@ -831,7 +687,6 @@ export default function CheckoutPage() {
           </div>
 
           <div className="grid lg:grid-cols-3 gap-6 sm:gap-8">
-            {/* Checkout Form - Responsive */}
             <div className="lg:col-span-2">
               <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-lg sm:shadow-xl p-4 sm:p-6 md:p-8 mb-6 sm:mb-8">
                 {activeStep === 1 && (
