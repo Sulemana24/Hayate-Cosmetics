@@ -2,14 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import {
-  collection,
-  getDocs,
-  query,
-  orderBy,
-  limit,
-  startAfter,
-} from "firebase/firestore";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -43,7 +36,6 @@ export default function NewArrivalsPage() {
   const [categories, setCategories] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>("newest");
 
-  // Fetch products
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -58,13 +50,11 @@ export default function NewArrivalsPage() {
           ...doc.data(),
         })) as Product[];
 
-        // Extract unique categories
         const uniqueCategories = Array.from(
           new Set(productsData.map((p) => p.category))
         );
         setCategories(["all", ...uniqueCategories]);
 
-        // Apply sorting
         let sortedProducts = [...productsData];
         if (sortBy === "price-low") {
           sortedProducts.sort((a, b) => a.discountedPrice - b.discountedPrice);
@@ -74,7 +64,6 @@ export default function NewArrivalsPage() {
           sortedProducts.sort((a, b) => (b.rating || 0) - (a.rating || 0));
         }
 
-        // Apply category filter
         if (selectedCategory !== "all") {
           sortedProducts = sortedProducts.filter(
             (p) => p.category === selectedCategory
@@ -118,7 +107,6 @@ export default function NewArrivalsPage() {
         </div>
       </div>
 
-      {/* Filters and Controls */}
       <div className="container mx-auto px-4 py-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div className="flex items-center gap-4">
@@ -195,7 +183,6 @@ export default function NewArrivalsPage() {
           </div>
         </div>
 
-        {/* Products Grid/List */}
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[...Array(8)].map((_, i) => (
