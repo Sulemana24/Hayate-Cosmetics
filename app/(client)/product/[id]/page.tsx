@@ -47,8 +47,19 @@ export default function ProductDetailPage() {
   const [selectedImage, setSelectedImage] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
 
+  const handleBuyNow = () => {
+    if (!currentUserId || !product) {
+      alert("You must be logged in to make a purchase.");
+      return;
+    }
+    router.push(`/checkout?productId=${product.id}&quantity=${quantity}`);
+  };
+
   const handleAddToCart = async () => {
-    if (!currentUserId || !product) return;
+    if (!currentUserId || !product) {
+      alert("You must be logged in to add items to the cart.");
+      return;
+    }
     setIsAddingToCart(true);
 
     try {
@@ -56,13 +67,11 @@ export default function ProductDetailPage() {
       const cartSnap = await getDoc(cartRef);
 
       if (cartSnap.exists()) {
-        // If item exists, update quantity
         await updateDoc(cartRef, {
           quantity: (cartSnap.data().quantity || 1) + quantity,
           updatedAt: serverTimestamp(),
         });
       } else {
-        // Otherwise, create new cart item
         await setDoc(cartRef, {
           productId: product.id,
           name: product.name,
@@ -497,7 +506,10 @@ export default function ProductDetailPage() {
                 </button>
               </div>
 
-              <button className="w-full mt-3 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-xl hover:opacity-90 transition-opacity">
+              <button
+                onClick={handleBuyNow}
+                className="w-full mt-3 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-xl hover:opacity-90 transition-opacity"
+              >
                 Buy Now
               </button>
             </div>
