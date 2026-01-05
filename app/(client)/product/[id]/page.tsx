@@ -47,8 +47,50 @@ export default function ProductDetailPage() {
   const [selectedImage, setSelectedImage] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
 
+  const handleBuyNow = async () => {
+    if (!currentUserId || !product) {
+      alert("You must be logged in to make a purchase.");
+      return;
+    }
+
+    try {
+      setIsAddingToCart(true);
+
+      const cartCollectionRef = collection(db, "users", currentUserId, "cart");
+
+      const cartSnapshot = await getDocs(cartCollectionRef);
+      const deletePromises = cartSnapshot.docs.map((docSnap) =>
+        deleteDoc(docSnap.ref)
+      );
+      await Promise.all(deletePromises);
+
+      const cartItemRef = doc(db, "users", currentUserId, "cart", product.id);
+
+      await setDoc(cartItemRef, {
+        productId: product.id,
+        name: product.name,
+        imageUrl: product.imageUrl,
+        price: product.discountedPrice,
+        category: product.category,
+        quantity,
+        addedAt: serverTimestamp(),
+        buyNow: true,
+      });
+
+      router.push("/checkout");
+    } catch (error) {
+      console.error("Buy now failed:", error);
+      alert("Something went wrong. Please try again.");
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
+
   const handleAddToCart = async () => {
-    if (!currentUserId || !product) return;
+    if (!currentUserId || !product) {
+      alert("You must be logged in to add items to the cart.");
+      return;
+    }
     setIsAddingToCart(true);
 
     try {
@@ -56,13 +98,11 @@ export default function ProductDetailPage() {
       const cartSnap = await getDoc(cartRef);
 
       if (cartSnap.exists()) {
-        // If item exists, update quantity
         await updateDoc(cartRef, {
           quantity: (cartSnap.data().quantity || 1) + quantity,
           updatedAt: serverTimestamp(),
         });
       } else {
-        // Otherwise, create new cart item
         await setDoc(cartRef, {
           productId: product.id,
           name: product.name,
@@ -497,7 +537,10 @@ export default function ProductDetailPage() {
                 </button>
               </div>
 
-              <button className="w-full mt-3 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-xl hover:opacity-90 transition-opacity">
+              <button
+                onClick={handleBuyNow}
+                className="w-full mt-3 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-xl hover:opacity-90 transition-opacity"
+              >
                 Buy Now
               </button>
             </div>
