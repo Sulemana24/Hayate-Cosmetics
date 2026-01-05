@@ -47,12 +47,43 @@ export default function ProductDetailPage() {
   const [selectedImage, setSelectedImage] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
 
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
     if (!currentUserId || !product) {
       alert("You must be logged in to make a purchase.");
       return;
     }
-    router.push(`/checkout?productId=${product.id}&quantity=${quantity}`);
+
+    try {
+      setIsAddingToCart(true);
+
+      const cartCollectionRef = collection(db, "users", currentUserId, "cart");
+
+      const cartSnapshot = await getDocs(cartCollectionRef);
+      const deletePromises = cartSnapshot.docs.map((docSnap) =>
+        deleteDoc(docSnap.ref)
+      );
+      await Promise.all(deletePromises);
+
+      const cartItemRef = doc(db, "users", currentUserId, "cart", product.id);
+
+      await setDoc(cartItemRef, {
+        productId: product.id,
+        name: product.name,
+        imageUrl: product.imageUrl,
+        price: product.discountedPrice,
+        category: product.category,
+        quantity,
+        addedAt: serverTimestamp(),
+        buyNow: true,
+      });
+
+      router.push("/checkout");
+    } catch (error) {
+      console.error("Buy now failed:", error);
+      alert("Something went wrong. Please try again.");
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
   const handleAddToCart = async () => {
