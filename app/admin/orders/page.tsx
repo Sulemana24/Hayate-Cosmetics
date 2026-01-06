@@ -8,7 +8,6 @@ import {
   FiSearch,
   FiFilter,
   FiEye,
-  FiEdit,
   FiTrash2,
   FiChevronDown,
   FiPackage,
@@ -86,7 +85,6 @@ export default function OrdersPage() {
     "cancelled",
   ];
 
- 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -106,7 +104,6 @@ export default function OrdersPage() {
     fetchOrders();
   }, []);
 
-
   const handleDelete = async (id: string, orderNumber: string) => {
     if (
       !confirm(
@@ -125,7 +122,6 @@ export default function OrdersPage() {
     }
   };
 
- 
   const updateOrderStatus = async (id: string, newStatus: Order["status"]) => {
     try {
       await updateDoc(doc(db, "orders", id), {
@@ -144,15 +140,15 @@ export default function OrdersPage() {
     }
   };
 
-  
   const filteredOrders = orders.filter((order) => {
+    const search = searchQuery.toLowerCase();
+
     const matchesSearch =
-      order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.customerEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.customerPhone.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (order.trackingNumber &&
-        order.trackingNumber.toLowerCase().includes(searchQuery.toLowerCase()));
+      (order.orderNumber?.toLowerCase().includes(search) ?? false) ||
+      (order.customerName?.toLowerCase().includes(search) ?? false) ||
+      (order.customerEmail?.toLowerCase().includes(search) ?? false) ||
+      (order.customerPhone?.toLowerCase().includes(search) ?? false) ||
+      (order.trackingNumber?.toLowerCase().includes(search) ?? false);
 
     const matchesStatus =
       selectedStatus === "All" || order.status === selectedStatus;
@@ -164,13 +160,24 @@ export default function OrdersPage() {
     return matchesSearch && matchesStatus && matchesPaymentStatus;
   });
 
-
   const sortedOrders = [...filteredOrders].sort((a, b) => {
+    type FirestoreDate = Timestamp | Date | null | undefined;
+
+    const getTime = (t: FirestoreDate): number => {
+      if (!t) return 0;
+
+      if (t instanceof Timestamp) {
+        return t.toMillis();
+      }
+
+      return t.getTime();
+    };
+
     switch (sortBy) {
       case "newest":
-        return b.createdAt.seconds - a.createdAt.seconds;
+        return getTime(b.createdAt) - getTime(a.createdAt);
       case "oldest":
-        return a.createdAt.seconds - b.createdAt.seconds;
+        return getTime(a.createdAt) - getTime(b.createdAt);
       case "amount-low":
         return a.totalAmount - b.totalAmount;
       case "amount-high":
@@ -180,12 +187,10 @@ export default function OrdersPage() {
     }
   });
 
- 
   const totalPages = Math.ceil(sortedOrders.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentOrders = sortedOrders.slice(indexOfFirstItem, indexOfLastItem);
-
 
   const getStatusInfo = (status: Order["status"]) => {
     switch (status) {
@@ -233,7 +238,6 @@ export default function OrdersPage() {
     }
   };
 
-  
   const getPaymentStatusColor = (status: Order["paymentStatus"]) => {
     switch (status) {
       case "paid":
@@ -247,12 +251,9 @@ export default function OrdersPage() {
     }
   };
 
- 
   const totalOrders = orders.length;
   const pendingOrders = orders.filter((o) => o.status === "pending").length;
-  const processingOrders = orders.filter(
-    (o) => o.status === "processing"
-  ).length;
+
   const shippedOrders = orders.filter((o) => o.status === "shipped").length;
   const deliveredOrders = orders.filter((o) => o.status === "delivered").length;
   const totalRevenue = orders.reduce(
@@ -260,10 +261,8 @@ export default function OrdersPage() {
     0
   );
 
-
   const hasActiveFilters =
     searchQuery || selectedStatus !== "All" || selectedPaymentStatus !== "All";
-
 
   const formatDateTime = (timestamp: Timestamp) => {
     const date = timestamp.toDate();
@@ -280,7 +279,6 @@ export default function OrdersPage() {
       }),
     };
   };
-
 
   const formatAddress = (order: Order) => {
     const parts = [order.shippingAddress];
@@ -308,7 +306,6 @@ export default function OrdersPage() {
   return (
     <AdminLayout>
       <div className="p-4 md:p-6">
-       
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -426,10 +423,8 @@ export default function OrdersPage() {
           </div>
         </div>
 
-      
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-gray-700 mb-8">
           <div className="flex flex-col md:flex-row gap-4">
-           
             <div className="flex-1">
               <div className="relative">
                 <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -443,7 +438,6 @@ export default function OrdersPage() {
               </div>
             </div>
 
-           
             <div className="relative">
               <button
                 onClick={() => {
@@ -488,7 +482,6 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-full">
@@ -514,7 +507,6 @@ export default function OrdersPage() {
                         key={order.id}
                         className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors duration-150"
                       >
-                        
                         <td className="py-4 pl-6">
                           <div className="space-y-3">
                             <div>
