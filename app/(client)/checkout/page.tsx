@@ -10,6 +10,7 @@ import {
   doc,
   writeBatch,
   addDoc,
+  setDoc,
   updateDoc,
   serverTimestamp,
   FieldValue,
@@ -227,22 +228,23 @@ export default function CheckoutPage() {
       throw new Error("User must be logged in to create an order");
     }
 
-    const now = new Date();
+    const now = serverTimestamp();
     const orderCode = `HAY-${Math.floor(10000 + Math.random() * 90000)}`;
 
     const tempId = orderCode;
 
     const orderData = {
-      tempId,
       userId: currentUserId,
-      items: cartItems,
-      totalAmount: finalTotal,
+      items: cartItemsRef.current,
       subtotal: totalPrice,
       shippingFee,
       tax: 0,
+      totalAmount: finalTotal,
+
       status: "pending_payment",
-      paymentMethod: "paystack",
       paymentStatus: "pending",
+      paymentMethod: "paystack",
+
       shippingAddress: {
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -254,76 +256,60 @@ export default function CheckoutPage() {
         phone: formData.phone,
         email: formData.email,
       },
+
       customerName: `${formData.firstName} ${formData.lastName}`,
       customerEmail: formData.email,
       customerPhone: formData.phone,
-      orderId: orderCode,
-      userEmail: formData.email,
+
+      orderCode,
       createdAt: now,
       updatedAt: now,
     };
 
-    const userOrderRef = await addDoc(
-      collection(db, "users", currentUserId, "orders"),
-      orderData
-    );
+    const userOrderRef = doc(collection(db, "users", currentUserId, "orders"));
 
-    const userOrderId = userOrderRef.id;
+    const orderId = userOrderRef.id;
 
-    sessionStorage.setItem(
-      "pendingOrder",
-      JSON.stringify({
-        userOrderId,
-        tempId,
-        userId: currentUserId,
-      })
-    );
+    await setDoc(userOrderRef, orderData);
 
-    setTempOrderId(userOrderId);
-    tempOrderIdRef.current = userOrderId;
+    await setDoc(doc(db, "orders", orderId), {
+      ...orderData,
+      userId: currentUserId,
+    });
 
-    return userOrderId;
+    setTempOrderId(orderId);
+    tempOrderIdRef.current = orderId;
+
+    return orderId;
   };
 
   const updateOrderAfterPayment = async (
     paymentReference: string,
     paymentResponse: PaystackResponse,
-    userOrderId: string,
+    orderId: string,
     userId: string
   ) => {
-    if (!userOrderId || !userId) throw new Error("Missing order reference");
-
-    const now = new Date();
-
     const updateData = {
       paymentStatus: "completed",
       paymentReference,
-      paymentDate: now,
       status: "processing",
-      confirmedAt: now,
-      updatedAt: now,
-      transactionId: paymentResponse.transaction || null,
-      transactionReference: paymentResponse.reference || paymentReference,
+      confirmedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      transactionId: paymentResponse.transaction,
+      transactionReference: paymentResponse.reference,
       currency: paymentResponse.currency || "GHS",
       channel: paymentResponse.channel || null,
     };
 
-    const orderDocRef = doc(db, "users", userId, "orders", userOrderId);
+    await updateDoc(doc(db, "users", userId, "orders", orderId), updateData);
 
-    await updateDoc(orderDocRef, updateData);
+    await updateDoc(doc(db, "orders", orderId), updateData);
 
-    if (cartItemsRef.current.length > 0) {
-      const batch = writeBatch(db);
-      cartItemsRef.current.forEach((item) => {
-        batch.delete(doc(db, "users", userId, "cart", item.id));
-      });
-      await batch.commit();
-    }
-
-    setOrderId(userOrderId);
-    setPaymentSuccess(true);
-    sessionStorage.removeItem("pendingOrder");
-    setCartItems([]);
+    const batch = writeBatch(db);
+    cartItemsRef.current.forEach((item) => {
+      batch.delete(doc(db, "users", userId, "cart", item.id));
+    });
+    await batch.commit();
   };
 
   const handleInputChange = (
@@ -377,7 +363,11 @@ export default function CheckoutPage() {
   };
 
   const onPaymentSuccess = async (response: PaystackResponse) => {
-    console.log("Paystack success response received");
+    if (processing === false && paymentSuccess === true) {
+      return;
+    }
+
+    setProcessing(true);
 
     const tempId = tempOrderIdRef.current;
     const userId = currentUserIdRef.current;
@@ -473,13 +463,11 @@ export default function CheckoutPage() {
 
       tempOrderIdRef.current = tempId;
 
-      const reference = `HAY-${Math.floor(10000 + Math.random() * 90000)}`;
-
       const paystackConfig: PaystackOptions = {
         key: paystackPublicKey,
         email: formData.email,
         amount: Math.round(finalTotal * 100),
-        ref: reference,
+        ref: tempId,
         currency: "GHS",
         metadata: {
           order_id: tempId,
@@ -490,12 +478,6 @@ export default function CheckoutPage() {
           shipping_region: formData.regions,
         },
         callback: (response: PaystackResponse) => {
-          console.log("Paystack callback triggered");
-          console.log("Current ref values:", {
-            tempOrderIdRef: tempOrderIdRef.current,
-            currentUserIdRef: currentUserIdRef.current,
-          });
-
           if (response.status === "success") {
             onPaymentSuccess(response);
           } else {
