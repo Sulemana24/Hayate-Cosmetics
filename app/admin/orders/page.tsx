@@ -666,7 +666,7 @@ export default function OrdersPage() {
                         <td className="py-4 pr-6">
                           <div className="flex items-center justify-end gap-2">
                             <Link
-                              href={`/admin/orders/view/${order.id}`}
+                              href={`/admin/orders/${order.id}`}
                               className="p-2 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 rounded-lg transition-colors duration-200"
                               title="View Details"
                             >
