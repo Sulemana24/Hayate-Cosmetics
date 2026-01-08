@@ -109,13 +109,13 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-[#1b3c35] via-[#2a5a50] to-[#e39a89]/20 py-20 px-4">
+      <section className="relative bg-white py-20 px-4">
         <div className="container mx-auto">
           <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
+            <h1 className="text-5xl md:text-6xl font-bold text-black mb-6">
               Get in <span className="text-[#e39a89]">Touch</span>
             </h1>
-            <p className="text-xl text-gray-200 mb-8">
+            <p className="text-xl text-gray-600 mb-8">
               We&apos;re here to help with any questions about our products,
               orders, or beauty advice.
             </p>
@@ -358,28 +358,6 @@ export default function ContactPage() {
                       />
                     </svg>
                   </Link>
-                </div>
-              </div>
-
-              {/* Social Media */}
-              <div className="bg-gradient-to-r from-[#1b3c35] to-[#2a5a50] text-white rounded-3xl p-8">
-                <h3 className="text-2xl font-bold mb-6">Connect With Us</h3>
-                <p className="text-gray-200 mb-6">
-                  Follow us for beauty tips, new product launches, and exclusive
-                  offers.
-                </p>
-                <div className="flex gap-4">
-                  {["Instagram", "Facebook", "Twitter", "YouTube"].map(
-                    (platform) => (
-                      <a
-                        key={platform}
-                        href="#"
-                        className="flex-1 py-3 bg-white/10 backdrop-blur-sm rounded-xl text-center font-semibold hover:bg-white/20 transition-colors"
-                      >
-                        {platform}
-                      </a>
-                    )
-                  )}
                 </div>
               </div>
             </div>
