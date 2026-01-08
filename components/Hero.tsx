@@ -30,6 +30,7 @@ import {
   deleteDoc,
   getDoc,
   serverTimestamp,
+  where,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getAuth } from "firebase/auth";
@@ -46,6 +47,9 @@ export default function HeroSection() {
     {}
   );
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>(
+    {}
+  );
 
   useEffect(() => {
     const auth = getAuth();
@@ -59,7 +63,35 @@ export default function HeroSection() {
     return () => unsubscribe();
   }, []);
 
-  // Hero slides
+  useEffect(() => {
+    const fetchCategoryCounts = async () => {
+      try {
+        const categoriesToCheck = [
+          "Skincare",
+          "Fragrance",
+          "Accessories",
+          "Makeup",
+        ];
+        const counts: Record<string, number> = {};
+
+        for (const cat of categoriesToCheck) {
+          const q = query(
+            collection(db, "products"),
+            where("category", "==", cat)
+          );
+          const snapshot = await getDocs(q);
+          counts[cat] = snapshot.size;
+        }
+
+        setCategoryCounts(counts);
+      } catch (error) {
+        console.error("Error fetching category counts:", error);
+      }
+    };
+
+    fetchCategoryCounts();
+  }, []);
+
   const slides = [
     {
       id: 1,
@@ -99,7 +131,6 @@ export default function HeroSection() {
     },
   ];
 
-  // Features
   const features = [
     {
       icon: <FiTruck className="w-6 h-6" />,
@@ -123,39 +154,37 @@ export default function HeroSection() {
     },
   ];
 
-  // Top categories - Updated with real images
   const categories = [
     {
       id: 1,
       name: "Skincare",
       image: Image6,
-      count: "45 Products",
+      count: `${categoryCounts["Skincare"] ?? 0} Products`,
       link: "/category/skincare",
     },
     {
       id: 2,
       name: "Fragrance",
       image: Image5,
-      count: "32 Products",
+      count: `${categoryCounts["Fragrance"] ?? 0} Products`,
       link: "/category/fragrance",
     },
     {
       id: 3,
       name: "Accessories",
       image: Image4,
-      count: "28 Products",
+      count: `${categoryCounts["Accessories"] ?? 0} Products`,
       link: "/category/accessories",
     },
     {
       id: 4,
       name: "Makeup",
       image: Image7,
-      count: "56 Products",
+      count: `${categoryCounts["Makeup"] ?? 0} Products`,
       link: "/category/makeup",
     },
   ];
 
-  // Auto slide
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -163,7 +192,6 @@ export default function HeroSection() {
     return () => clearInterval(interval);
   }, [slides.length]);
 
-  // Navigation
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % slides.length);
   };
@@ -191,7 +219,6 @@ export default function HeroSection() {
           };
         });
 
-        // Shuffle products randomly
         const shuffled = products.sort(() => 0.5 - Math.random());
 
         setAllTrending(shuffled);
@@ -229,7 +256,6 @@ export default function HeroSection() {
     fetchFavorites();
   }, [allTrending, currentUserId]);
 
-  // Toggle favorite
   const toggleFavorite = async (product: Product) => {
     if (!currentUserId) {
       alert("You must be logged in to add favorites");
