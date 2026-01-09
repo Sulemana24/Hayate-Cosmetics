@@ -84,7 +84,6 @@ export default function ClientNavbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Dark mode toggle
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add("dark");
@@ -116,16 +115,11 @@ export default function ClientNavbar() {
 
   return (
     <>
-      {/* Top Announcement */}
-      <div className="bg-gradient-to-r from-[#e39a89] to-[#d87a6a] text-white py-2 px-4 text-center text-sm">
-        🎁 Free shipping on orders over ₵100 | Use code: HAYATE10 for 10% off
-      </div>
-
       <header
         className={`sticky top-0 z-50 w-full transition-all duration-300 ${
           isScrolled
-            ? "bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-lg"
-            : "bg-white dark:bg-gray-900"
+            ? "bg-white/95 dark:bg-gradient-to-r from-[#e39a89] to-[#d87a6a] backdrop-blur-md shadow-lg"
+            : "bg-white dark:bg-gradient-to-r from-[#e39a89] to-[#d87a6a] "
         }`}
       >
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -144,7 +138,7 @@ export default function ClientNavbar() {
               <h1 className="text-xl font-bold text-[#1b3c35] dark:text-white">
                 Hayate Cosmetics
               </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-gray-500 dark:text-gray-700">
                 Premium Beauty Products
               </p>
             </div>
@@ -163,13 +157,13 @@ export default function ClientNavbar() {
                   >
                     <button
                       onClick={() => setIsCategoriesOpen(!isCategoriesOpen)}
-                      className="flex items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-[#e39a89] dark:hover:text-[#e39a89] font-medium transition-colors duration-200"
+                      className="flex items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-[#0f2c26] dark:hover:text-[#0f2c26] font-medium transition-colors duration-200 cursor-pointer"
                     >
                       {link.name}
                       <FiChevronDown className="w-4 h-4" />
                     </button>
                     {isCategoriesOpen && (
-                      <div className="absolute left-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 z-50">
+                      <div className="absolute left-0 mt-2 w-48 bg-white dark:bg-[#0f2c26] rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 z-50">
                         {categories.map((category) => (
                           <Link
                             key={category}
@@ -192,7 +186,7 @@ export default function ClientNavbar() {
                   className={`font-medium transition-colors duration-200 ${
                     isActive
                       ? "text-[#e39a89] dark:text-[#e39a89]"
-                      : "text-gray-700 dark:text-gray-300 hover:text-[#e39a89] dark:hover:text-[#e39a89]"
+                      : "text-gray-700 dark:text-gray-300 hover:text-[#0f2c26] dark:hover:text-[#0f2c26]"
                   }`}
                 >
                   {link.name}
@@ -206,7 +200,7 @@ export default function ClientNavbar() {
             {isLoggedIn && (
               <Link
                 href="/favorites"
-                className="hidden md:block relative p-2 text-gray-700 dark:text-gray-300 hover:text-[#e39a89] dark:hover:text-[#e39a89]"
+                className="hidden md:block relative p-2 text-gray-700 dark:text-gray-300 hover:text-[#0f2c26] dark:hover:text-[#0f2c26]"
               >
                 <FiHeart className="w-5 h-5" />
                 {favoritesCount > 0 && (
@@ -221,7 +215,7 @@ export default function ClientNavbar() {
             {isLoggedIn && (
               <Link
                 href="/cart"
-                className="hidden md:block relative p-2 text-gray-700 dark:text-gray-300 hover:text-[#e39a89] dark:hover:text-[#e39a89]"
+                className="hidden md:block relative p-2 text-gray-700 dark:text-gray-300 hover:text-[#0f2c26] dark:hover:text-[#0f2c26]"
               >
                 <FiShoppingCart className="w-5 h-5" />
                 {cartItemsCount > 0 && (
@@ -236,7 +230,7 @@ export default function ClientNavbar() {
             <div className="relative hidden md:block" ref={userMenuRef}>
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="p-2 text-gray-700 dark:text-gray-300 hover:text-[#e39a89] dark:hover:text-[#e39a89] transition-colors duration-200 flex items-center gap-2"
+                className="p-2 text-gray-700 dark:text-gray-300 hover:text-[#0f2c26] dark:hover:text-[#0f2c26] transition-colors duration-200 flex items-center gap-2"
               >
                 <FiUser className="w-5 h-5" />
                 <FiChevronDown className="w-4 h-4" />

@@ -14,6 +14,7 @@ import {
   updateDoc,
   serverTimestamp,
   FieldValue,
+  increment,
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import {
@@ -231,8 +232,6 @@ export default function CheckoutPage() {
     const now = serverTimestamp();
     const orderCode = `HAY-${Math.floor(10000 + Math.random() * 90000)}`;
 
-    const tempId = orderCode;
-
     const orderData = {
       userId: currentUserId,
       items: cartItemsRef.current,
@@ -298,7 +297,7 @@ export default function CheckoutPage() {
       transactionId: paymentResponse.transaction,
       transactionReference: paymentResponse.reference,
       currency: paymentResponse.currency || "GHS",
-      channel: paymentResponse.channel || null,
+      channel: paymentResponse.channel || "MOMO",
     };
 
     await updateDoc(doc(db, "users", userId, "orders", orderId), updateData);
@@ -309,6 +308,25 @@ export default function CheckoutPage() {
     cartItemsRef.current.forEach((item) => {
       batch.delete(doc(db, "users", userId, "cart", item.id));
     });
+    await batch.commit();
+  };
+
+  const updateProductQuantities = async () => {
+    const batch = writeBatch(db);
+
+    cartItemsRef.current.forEach((item) => {
+      if (!item.productId) {
+        throw new Error("Missing productId in cart item");
+      }
+
+      const productRef = doc(db, "products", item.productId);
+
+      batch.update(productRef, {
+        quantity: increment(-item.quantity),
+        updatedAt: serverTimestamp(),
+      });
+    });
+
     await batch.commit();
   };
 
@@ -381,6 +399,7 @@ export default function CheckoutPage() {
     });
 
     try {
+      await updateProductQuantities();
       await updateOrderAfterPayment(
         response.reference,
         response,
@@ -399,7 +418,6 @@ export default function CheckoutPage() {
         router.push("/orders?payment=success");
       }, 3000);
     } catch (error: unknown) {
-      console.error("Error processing payment success:", error);
       setProcessing(false);
 
       if (
@@ -418,8 +436,6 @@ export default function CheckoutPage() {
   };
 
   const onPaymentFailed = (response: PaystackResponse) => {
-    console.error("Payment failed:", response);
-    setProcessing(false);
     alert(`Payment failed: ${response.message || "Please try again"}`);
   };
 
