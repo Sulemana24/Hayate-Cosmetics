@@ -30,7 +30,6 @@ import {
   query,
   orderBy,
   Timestamp,
-  where,
 } from "firebase/firestore";
 
 interface Product {

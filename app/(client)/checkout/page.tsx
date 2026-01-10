@@ -52,19 +52,6 @@ interface FormData {
   saveInfo: boolean;
 }
 
-interface OrderUpdateData {
-  paymentStatus: "completed";
-  paymentReference: string;
-  paymentDate: ReturnType<typeof serverTimestamp>;
-  status: "processing";
-  confirmedAt: ReturnType<typeof serverTimestamp>;
-  updatedAt: ReturnType<typeof serverTimestamp>;
-  transactionId?: string;
-  transactionReference?: string;
-  currency?: string;
-  channel?: string;
-}
-
 interface PaystackResponse {
   status: string;
   message: string;
