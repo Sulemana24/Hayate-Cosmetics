@@ -10,7 +10,6 @@ import {
   FiPackage,
   FiShoppingCart,
   FiActivity,
-  FiStar,
   FiArrowUp,
   FiArrowDown,
 } from "react-icons/fi";
@@ -22,7 +21,7 @@ import {
   query,
   orderBy,
   Timestamp,
-  where,
+  limit,
 } from "firebase/firestore";
 
 interface Product {
@@ -36,11 +35,21 @@ interface Product {
   createdAt: Timestamp;
 }
 
-interface Order {
-  id: string;
-  amount: number;
+interface FirestoreOrder {
+  orderCode: string;
+  customerName: string;
+  totalAmount: number;
   status: string;
   createdAt: Timestamp;
+}
+
+interface RecentOrder {
+  id: string;
+  customer: string;
+  amount: string;
+  totalAmount: number;
+  status: string;
+  date: string;
 }
 
 interface DashboardStats {
@@ -66,66 +75,38 @@ export default function AdminDashboardPage() {
     outOfStockProducts: 0,
     totalOrders: 0,
     totalRevenue: 0,
-    totalCustomers: 89, // You might want to fetch this from Firebase too
+    totalCustomers: 89,
     inventoryItems: 0,
     pendingOrders: 0,
     conversionRate: 3.2,
     averageOrderValue: 0,
   });
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
 
-  const recentOrders = [
-    {
-      id: "#ORD-001",
-      customer: "John Doe",
-      amount: "₵245.99",
-      status: "delivered",
-      date: "2 min ago",
-    },
-    {
-      id: "#ORD-002",
-      customer: "Jane Smith",
-      amount: "₵129.50",
-      status: "processing",
-      date: "15 min ago",
-    },
-    {
-      id: "#ORD-003",
-      customer: "Robert Johnson",
-      amount: "₵89.99",
-      status: "pending",
-      date: "1 hour ago",
-    },
-    {
-      id: "#ORD-004",
-      customer: "Sarah Williams",
-      amount: "₵345.75",
-      status: "delivered",
-      date: "2 hours ago",
-    },
-    {
-      id: "#ORD-005",
-      customer: "Michael Brown",
-      amount: "₵67.25",
-      status: "shipped",
-      date: "3 hours ago",
-    },
-  ];
+  const fetchRecentOrders = async (): Promise<RecentOrder[]> => {
+    const ordersRef = collection(db, "orders");
+    const q = query(ordersRef, orderBy("createdAt", "desc"), limit(5));
+    const snapshot = await getDocs(q);
 
-  const topProducts = [
-    { name: "Wireless Headphones", sales: 45, revenue: "₵4,500", stock: 12 },
-    { name: "Smart Watch", sales: 38, revenue: "₵7,600", stock: 8 },
-    { name: "Laptop Stand", sales: 32, revenue: "₵1,920", stock: 24 },
-    { name: "Coffee Maker", sales: 28, revenue: "₵3,920", stock: 5 },
-    { name: "Yoga Mat", sales: 25, revenue: "₵1,250", stock: 16 },
-  ];
+    const recentOrders: RecentOrder[] = snapshot.docs.map((doc) => {
+      const data = doc.data() as FirestoreOrder;
+      return {
+        id: data.orderCode,
+        customer: data.customerName,
+        totalAmount: data.totalAmount,
+        amount: `₵${data.totalAmount.toFixed(2)}`,
+        status: data.status.toLowerCase(),
+        date: data.createdAt.toDate().toLocaleString(),
+      };
+    });
 
-  // Fetch dashboard statistics
+    return recentOrders;
+  };
+
   useEffect(() => {
     const fetchDashboardStats = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
-
-        // Fetch products
         const productsQuery = query(
           collection(db, "products"),
           orderBy("createdAt", "desc")
@@ -136,7 +117,6 @@ export default function AdminDashboardPage() {
           ...doc.data(),
         })) as Product[];
 
-        // Calculate product statistics
         const totalProducts = products.length;
         const inStockProducts = products.filter(
           (p) => p.status === "In Stock"
@@ -147,83 +127,33 @@ export default function AdminDashboardPage() {
         const outOfStockProducts = products.filter(
           (p) => p.status === "Out of Stock"
         ).length;
+        const inventoryItems = products.reduce((sum, p) => sum + p.quantity, 0);
 
-        // Calculate total inventory items
-        const inventoryItems = products.reduce(
-          (sum, product) => sum + product.quantity,
-          0
-        );
-
-        // Fetch orders (you need to create an orders collection in Firebase)
-        // For now, using mock data for orders
-        // const ordersQuery = query(collection(db, "orders"), orderBy("createdAt", "desc"));
-        // const ordersSnapshot = await getDocs(ordersQuery);
-        // const orders = ordersSnapshot.docs.map(doc => ({
-        //   id: doc.id,
-        //   ...doc.data()
-        // })) as Order[];
-
-        // Mock order data for now - replace with actual Firebase query
-        const mockOrders = [
-          {
-            id: "1",
-            amount: 245.99,
-            status: "delivered",
-            createdAt: Timestamp.now(),
-          },
-          {
-            id: "2",
-            amount: 129.5,
-            status: "processing",
-            createdAt: Timestamp.now(),
-          },
-          {
-            id: "3",
-            amount: 89.99,
-            status: "pending",
-            createdAt: Timestamp.now(),
-          },
-          {
-            id: "4",
-            amount: 345.75,
-            status: "delivered",
-            createdAt: Timestamp.now(),
-          },
-          {
-            id: "5",
-            amount: 67.25,
-            status: "shipped",
-            createdAt: Timestamp.now(),
-          },
-        ];
-
-        const totalOrders = mockOrders.length;
-        const totalRevenue = mockOrders.reduce(
-          (sum, order) => sum + order.amount,
-          0
-        );
-        const pendingOrders = mockOrders.filter(
+        const orders = await fetchRecentOrders();
+        const totalOrders = orders.length;
+        const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
+        const pendingOrders = orders.filter(
           (o) => o.status === "pending" || o.status === "processing"
         ).length;
         const averageOrderValue =
           totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
-        setStats({
+        setStats((prev) => ({
+          ...prev,
           totalProducts,
           inStockProducts,
           lowStockProducts,
           outOfStockProducts,
+          inventoryItems,
           totalOrders,
           totalRevenue,
-          totalCustomers: 89,
-
-          inventoryItems,
           pendingOrders,
-          conversionRate: 3.2,
           averageOrderValue,
-        });
-      } catch (error) {
-        console.error("Error fetching dashboard stats:", error);
+        }));
+
+        setRecentOrders(orders);
+      } catch (err) {
+        console.error("Error fetching dashboard stats:", err);
       } finally {
         setLoading(false);
       }
@@ -232,13 +162,11 @@ export default function AdminDashboardPage() {
     fetchDashboardStats();
   }, []);
 
-  // Calculate percentage changes (you can make these dynamic too)
   const calculatePercentageChange = (current: number, previous: number) => {
     if (previous === 0) return 100;
     return ((current - previous) / previous) * 100;
   };
 
-  // Mock previous month data - you can fetch this from Firebase too
   const previousMonthStats = {
     totalProducts: 140,
     totalOrders: 300,
@@ -602,48 +530,6 @@ export default function AdminDashboardPage() {
                 ))}
               </tbody>
             </table>
-          </div>
-        </div>
-
-        {/* Top Products */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
-              Top Products
-            </h3>
-            <button className="text-sm text-[#e39a89] hover:text-[#d87a6a] dark:text-white font-medium">
-              View All
-            </button>
-          </div>
-          <div className="space-y-4">
-            {topProducts.map((product, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-r from-[#e39a89]/20 to-[#d87a6a]/20 rounded-lg flex items-center justify-center">
-                    <FiStar className="w-5 h-5 text-[#e39a89]" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-800 dark:text-white">
-                      {product.name}
-                    </h4>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Stock: {product.stock}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-gray-800 dark:text-white">
-                    {product.revenue}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {product.sales} sales
-                  </p>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </div>
