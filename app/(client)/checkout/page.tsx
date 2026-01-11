@@ -405,6 +405,7 @@ export default function CheckoutPage() {
         router.push("/orders?payment=success");
       }, 3000);
     } catch (error: unknown) {
+      console.error("Payment update error:", error);
       setProcessing(false);
 
       if (

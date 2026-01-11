@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import AdminLayout from "@/components/admin/AdminLayout";
-import Image from "next/image";
+import { useToast } from "@/components/ToastProvider";
 import {
   FiSearch,
   FiFilter,
@@ -67,6 +67,7 @@ interface Order {
 
 export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const { showToast } = useToast();
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState("All");
   const [sortBy, setSortBy] = useState("newest");
@@ -96,7 +97,11 @@ export default function OrdersPage() {
         })) as Order[];
         setOrders(items);
       } catch (error) {
-        console.error("Firestore fetch failed:", error);
+        showToast({
+          type: "error",
+          title: "Fetch Failed",
+          message: "Failed to fetch orders. Please try again.",
+        });
       } finally {
         setLoading(false);
       }
@@ -117,8 +122,11 @@ export default function OrdersPage() {
       await deleteDoc(doc(db, "orders", id));
       setOrders(orders.filter((o) => o.id !== id));
     } catch (error) {
-      console.error("Delete failed:", error);
-      alert("Failed to delete order");
+      showToast({
+        type: "error",
+        title: "Delete Failed",
+        message: "Failed to delete order. Please try again.",
+      });
     }
   };
 
@@ -135,8 +143,11 @@ export default function OrdersPage() {
         )
       );
     } catch (error) {
-      console.error("Failed to update status:", error);
-      alert("Failed to update order status");
+      showToast({
+        type: "error",
+        title: "Update Failed",
+        message: "Failed to update order status. Please try again.",
+      });
     }
   };
 

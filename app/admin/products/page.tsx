@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useToast } from "@/components/ToastProvider";
 import {
   FiSearch,
   FiFilter,
@@ -15,7 +15,6 @@ import {
   FiShoppingBag,
   FiDollarSign,
   FiImage,
-  FiX,
   FiChevronLeft,
   FiChevronRight,
 } from "react-icons/fi";
@@ -47,7 +46,7 @@ interface Product {
 }
 
 export default function ProductsPage() {
-  const router = useRouter();
+  const { showToast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
@@ -75,7 +74,11 @@ export default function ProductsPage() {
         })) as Product[];
         setProducts(items);
       } catch (error) {
-        console.error("Firestore fetch failed:", error);
+        showToast({
+          type: "error",
+          title: "Fetch Error",
+          message: "Failed to load products",
+        });
       } finally {
         setLoading(false);
       }
@@ -96,9 +99,17 @@ export default function ProductsPage() {
     try {
       await deleteDoc(doc(db, "products", id));
       setProducts(products.filter((p) => p.id !== id));
+      showToast({
+        type: "success",
+        title: "Deleted",
+        message: `"${name}" has been deleted`,
+      });
     } catch (error) {
-      console.error("Delete failed:", error);
-      alert("Failed to delete product");
+      showToast({
+        type: "error",
+        title: "Delete Failed",
+        message: "Failed to delete product",
+      });
     }
   };
 
@@ -166,10 +177,8 @@ export default function ProductsPage() {
       )
     : 0;
 
-  // Check if any filter is active
   const hasActiveFilters = searchQuery || selectedCategory !== "All";
 
-  // Function to extract domain for unoptimized images
   const isExternalImage = (url: string) => {
     if (!url) return true;
     try {

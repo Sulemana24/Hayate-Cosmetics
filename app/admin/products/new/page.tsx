@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useToast } from "@/components/ToastProvider";
 import {
   FiArrowLeft,
   FiSave,
@@ -18,8 +19,8 @@ import UploadThingUploader from "@/components/UploadThingUploader";
 
 export default function NewProductPage() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
-
   const [productForm, setProductForm] = useState({
     name: "",
     description: "",
@@ -115,31 +116,51 @@ export default function NewProductPage() {
 
       // Validate data
       if (productData.discountedPrice > productData.originalPrice) {
-        alert("Discounted price cannot be higher than original price");
+        showToast({
+          type: "error",
+          title: "Invalid Price",
+          message: "Discounted price cannot be higher than original price",
+        });
         setLoading(false);
         return;
       }
 
       if (productData.quantity < 0) {
-        alert("Quantity cannot be negative");
+        showToast({
+          type: "error",
+          title: "Invalid Quantity",
+          message: "Quantity cannot be negative",
+        });
         setLoading(false);
         return;
       }
 
       if (productData.originalPrice <= 0 || productData.discountedPrice <= 0) {
-        alert("Price must be greater than 0");
+        showToast({
+          type: "error",
+          title: "Invalid Price",
+          message: "Price must be greater than 0",
+        });
         setLoading(false);
         return;
       }
 
-      const docRef = await addDoc(collection(db, "products"), productData);
+      await addDoc(collection(db, "products"), productData);
 
-      alert("Product added successfully!");
+      showToast({
+        type: "success",
+        title: "Product Added",
+        message: `${productForm.name} has been added successfully`,
+      });
+
       router.push("/admin/products");
       router.refresh();
     } catch (error) {
-      console.error("Error adding product:", error);
-      alert("Failed to add product. Please try again.");
+      showToast({
+        type: "error",
+        title: "Add Failed",
+        message: "Failed to add product. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
