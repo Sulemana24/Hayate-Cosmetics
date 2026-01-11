@@ -35,7 +35,7 @@ interface OrderItem {
 
 interface Order {
   id: string;
-  orderId: string;
+  orderCode?: string;
   items: OrderItem[];
   totalAmount: number;
   status: string;
@@ -47,6 +47,8 @@ interface Order {
     address?: string;
     phone?: string;
     email?: string;
+    locality?: string;
+    region?: string;
   };
   paymentStatus?: string;
   paymentMethod?: string;
@@ -288,7 +290,7 @@ export default function OrdersPage() {
             <div>
               <button
                 onClick={() => window.history.back()}
-                className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4 sm:mb-0"
+                className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4 sm:mb-2"
               >
                 <FiArrowLeft className="w-4 h-4" />
                 <span className="text-sm font-medium">Back</span>
@@ -491,8 +493,8 @@ export default function OrdersPage() {
                         <div>
                           <div className="flex items-center gap-3 flex-wrap">
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                              Order #
-                              {order.orderId ||
+                              Order: #
+                              {order.orderCode ||
                                 order.id.slice(-8).toUpperCase()}
                             </h3>
                             <span
@@ -514,7 +516,7 @@ export default function OrdersPage() {
                             </span>
                             {order.paymentMethod && (
                               <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs">
-                                {order.paymentMethod}
+                                MOMO
                               </span>
                             )}
                           </div>
@@ -524,9 +526,6 @@ export default function OrdersPage() {
                       <div className="lg:text-right">
                         <p className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
                           ₵{(order.totalAmount || 0).toFixed(2)}
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                          Includes shipping & taxes
                         </p>
                       </div>
                     </div>
@@ -591,12 +590,23 @@ export default function OrdersPage() {
                             </div>
                             <div>
                               <p className="text-sm text-gray-600 dark:text-gray-400">
-                                Location
+                                Region
                               </p>
+                              <p className="font-medium text-gray-900 dark:text-white mb-2">
+                                {order.shippingAddress.region} Region
+                              </p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                City
+                              </p>
+
                               <p className="font-medium text-gray-900 dark:text-white">
                                 {order.shippingAddress.city}
-                                {order.shippingAddress.address &&
-                                  `, ${order.shippingAddress.address}`}
+                              </p>
+                              <p>
+                                {order.shippingAddress.locality}
+                                {order.shippingAddress.address
+                                  ? `, ${order.shippingAddress.address}`
+                                  : ""}
                               </p>
                             </div>
                             {order.shippingAddress.phone && (

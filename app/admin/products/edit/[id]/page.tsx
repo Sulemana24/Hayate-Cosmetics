@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import { useToast } from "@/components/ToastProvider";
 import {
   FiArrowLeft,
   FiSave,
@@ -36,7 +37,7 @@ export default function EditProductPage() {
   const router = useRouter();
   const params = useParams();
   const productId = params.id as string;
-
+  const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -68,7 +69,6 @@ export default function EditProductPage() {
   };
   const statusOptions = ["In Stock", "Low Stock", "Out of Stock"];
 
-  // Fetch product data
   useEffect(() => {
     const fetchProduct = async () => {
       try {
@@ -76,7 +76,11 @@ export default function EditProductPage() {
         const docSnap = await getDoc(docRef);
 
         if (!docSnap.exists()) {
-          alert("Product not found");
+          showToast({
+            type: "error",
+            title: "Not Found",
+            message: "Product not found",
+          });
           router.push("/admin/products");
           return;
         }
@@ -94,8 +98,11 @@ export default function EditProductPage() {
           status: productData.status,
         });
       } catch (error) {
-        console.error("Error fetching product:", error);
-        alert("Failed to load product data");
+        showToast({
+          type: "error",
+          title: "Error",
+          message: "Failed to fetch product data",
+        });
         router.push("/admin/products");
       } finally {
         setLoading(false);
@@ -123,7 +130,11 @@ export default function EditProductPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      alert("Please upload an image file");
+      showToast({
+        type: "error",
+        title: "Invalid File",
+        message: "Please upload a valid image file",
+      });
       return;
     }
     setImagePreview(URL.createObjectURL(file));
@@ -176,13 +187,21 @@ export default function EditProductPage() {
 
       // Validate data
       if (productData.discountedPrice > productData.originalPrice) {
-        alert("Discounted price cannot be higher than original price");
+        showToast({
+          type: "error",
+          title: "Invalid Price",
+          message: "Discounted price cannot be higher than original price",
+        });
         setSaving(false);
         return;
       }
 
       if (productData.quantity < 0) {
-        alert("Quantity cannot be negative");
+        showToast({
+          type: "error",
+          title: "Invalid Quantity",
+          message: "Quantity cannot be negative",
+        });
         setSaving(false);
         return;
       }
@@ -190,12 +209,20 @@ export default function EditProductPage() {
       const docRef = doc(db, "products", productId);
       await updateDoc(docRef, productData);
 
-      alert("Product updated successfully!");
+      showToast({
+        type: "success",
+        title: "Product Updated",
+        message: `${productForm.name} has been updated successfully`,
+      });
       router.push("/admin/products");
       router.refresh();
     } catch (error) {
       console.error("Error updating product:", error);
-      alert("Failed to update product. Please try again.");
+      showToast({
+        type: "error",
+        title: "Update Failed",
+        message: "Failed to update product. Please try again.",
+      });
     } finally {
       setSaving(false);
     }

@@ -7,7 +7,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { FirebaseError } from "firebase/app";
 import { allowedAdmins } from "@/lib/admin";
-import { toast } from "react-hot-toast";
+import { useToast } from "@/components/ToastProvider";
 import { useRouter } from "next/navigation";
 import { useState, FormEvent, ChangeEvent } from "react";
 import Image from "next/image";
@@ -35,6 +35,7 @@ interface FormData {
 
 export default function AdminAuthPage() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [mode, setMode] = useState<AuthMode>("login");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] =
@@ -55,32 +56,49 @@ export default function AdminAuthPage() {
 
     try {
       if (mode === "signup") {
+        const email = formData.email.toLowerCase().trim();
+
+        if (!allowedAdmins.includes(email)) {
+          showToast({
+            message: "This email is not authorized to create an admin account.",
+            type: "error",
+          });
+          setLoading(false);
+          return;
+        }
+
         if (formData.password !== formData.confirmPassword) {
-          toast.error("Passwords do not match");
+          showToast({ message: "Passwords do not match", type: "error" });
           setLoading(false);
           return;
         }
 
         if (!formData.agreeToTerms) {
-          toast.error("You must confirm admin authorization");
+          showToast({
+            message: "You must confirm admin authorization",
+            type: "error",
+          });
           setLoading(false);
           return;
         }
 
         const res = await createUserWithEmailAndPassword(
           auth,
-          formData.email,
+          email,
           formData.password
         );
 
         await setDoc(doc(db, "users", res.user.uid), {
           fullName: formData.fullName,
-          email: formData.email,
+          email,
           role: "admin",
           createdAt: new Date(),
         });
 
-        toast.success("Admin account created successfully!");
+        showToast({
+          message: "Admin account created successfully!",
+          type: "success",
+        });
         router.push("/admin/dashboard");
       }
 
@@ -91,13 +109,16 @@ export default function AdminAuthPage() {
           formData.password
         );
 
-        if (!allowedAdmins.includes(res.user.email!)) {
-          toast.error("Access denied. Not an admin.");
+        const email = res.user.email?.toLowerCase().trim();
+
+        if (!email || !allowedAdmins.includes(email)) {
+          await auth.signOut();
+          showToast({ message: "Access denied. Not an admin.", type: "error" });
           setLoading(false);
           return;
         }
 
-        toast.success("Login successful!");
+        showToast({ message: "Login successful!", type: "success" });
         router.push("/admin/dashboard");
       }
     } catch (error: unknown) {
@@ -109,7 +130,7 @@ export default function AdminAuthPage() {
         message = error.message;
       }
 
-      toast.error(message);
+      showToast({ message, type: "error" });
     } finally {
       setLoading(false);
     }
@@ -124,10 +145,8 @@ export default function AdminAuthPage() {
   };
 
   const handleForgotPassword = () => {
-    console.log("Forgot password clicked");
-    toast("Forgot password clicked");
+    showToast({ message: "Forgot password clicked", type: "info" });
   };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#faf7f5] to-[#f0ece9] dark:from-gray-900 dark:to-gray-800 p-4">
       <div className="w-full max-w-md">
@@ -148,7 +167,7 @@ export default function AdminAuthPage() {
           </h2>
           <p className="text-gray-600 dark:text-gray-300">
             {mode === "login"
-              ? "Sign in to your admin account"
+              ? "Sign in to your admin accounty"
               : "Setup your admin credentials"}
           </p>
         </div>
