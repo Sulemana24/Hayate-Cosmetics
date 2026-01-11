@@ -15,7 +15,6 @@ import {
   FiDollarSign,
   FiTruck,
   FiCheckCircle,
-  FiX,
   FiChevronLeft,
   FiChevronRight,
   FiClock,
@@ -24,7 +23,9 @@ import {
   FiMapPin,
   FiCalendar,
   FiPhone,
-  FiNavigation,
+  FiCheck,
+  FiX,
+  FiEdit,
 } from "react-icons/fi";
 import { db } from "@/lib/firebase";
 import {
@@ -38,13 +39,19 @@ import {
   updateDoc,
 } from "firebase/firestore";
 
+type ShippingAddress = {
+  address: string;
+  city: string;
+  region: string;
+  locality: string;
+};
 interface Order {
   id: string;
-  orderNumber: string;
+  orderCode: string;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
-  shippingAddress: string;
+  shippingAddress: ShippingAddress;
   city: string;
   region: string;
   country: string;
@@ -120,7 +127,14 @@ export default function OrdersPage() {
 
     try {
       await deleteDoc(doc(db, "orders", id));
-      setOrders(orders.filter((o) => o.id !== id));
+
+      setOrders((prev) => prev.filter((o) => o.id !== id));
+
+      showToast({
+        type: "success",
+        title: "Order Deleted",
+        message: `Order ${orderNumber} was removed successfully.`,
+      });
     } catch (error) {
       showToast({
         type: "error",
@@ -155,7 +169,7 @@ export default function OrdersPage() {
     const search = searchQuery.toLowerCase();
 
     const matchesSearch =
-      (order.orderNumber?.toLowerCase().includes(search) ?? false) ||
+      (order.orderCode?.toLowerCase().includes(search) ?? false) ||
       (order.customerName?.toLowerCase().includes(search) ?? false) ||
       (order.customerEmail?.toLowerCase().includes(search) ?? false) ||
       (order.customerPhone?.toLowerCase().includes(search) ?? false) ||
@@ -293,10 +307,11 @@ export default function OrdersPage() {
 
   const formatAddress = (order: Order) => {
     const parts = [order.shippingAddress];
-    if (order.city) parts.push(order.city);
+    return parts.filter(Boolean).join(", ");
+    /*  if (order.city) parts.push(order.city);
     if (order.region) parts.push(order.region);
     if (order.country) parts.push(order.country);
-    return parts.join(", ");
+    return parts.join(", "); */
   };
 
   if (loading) {
@@ -522,9 +537,9 @@ export default function OrdersPage() {
                           <div className="space-y-3">
                             <div>
                               <h4 className="font-bold text-gray-800 dark:text-white mb-1">
-                                {order.orderNumber}
+                                {order.orderCode}
                               </h4>
-                              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                              <div className="flex items-center gap-2 text-sm  text-gray-600 dark:text-gray-400">
                                 <FiCalendar className="w-3 h-3" />
                                 <span>{date}</span>
                                 <span className="mx-1">•</span>
@@ -535,17 +550,8 @@ export default function OrdersPage() {
                             <div className="space-y-1">
                               <div className="text-sm text-gray-600 dark:text-gray-300">
                                 {order.items.length} item
-                                {order.items.length !== 1 ? "s" : ""} •{" "}
-                                {order.paymentMethod}
+                                {order.items.length !== 1 ? "s" : ""}
                               </div>
-                              {order.trackingNumber && (
-                                <div className="flex items-center gap-1 text-xs">
-                                  <FiNavigation className="w-3 h-3 text-blue-500" />
-                                  <span className="text-blue-600 dark:text-blue-400 font-medium">
-                                    {order.trackingNumber}
-                                  </span>
-                                </div>
-                              )}
                             </div>
                           </div>
                         </td>
@@ -588,16 +594,12 @@ export default function OrdersPage() {
                               <FiMapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                               <div>
                                 <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                                  {address}
+                                  {order.shippingAddress.city},{" "}
+                                  {order.shippingAddress.region},
                                 </p>
                               </div>
                             </div>
-                            {order.shippingMethod && (
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                <span className="font-medium">Method:</span>{" "}
-                                {order.shippingMethod}
-                              </div>
-                            )}
+
                             {/* Shipping status indicator */}
                             <div className="flex items-center gap-2 mt-1">
                               <div
@@ -683,27 +685,32 @@ export default function OrdersPage() {
                             >
                               <FiEye className="w-4 h-4" />
                             </Link>
-                            <button
-                              onClick={() =>
-                                updateOrderStatus(order.id, "cancelled")
-                              }
-                              disabled={
-                                order.status === "cancelled" ||
-                                order.status === "delivered"
-                              }
-                              className={`p-2 rounded-lg transition-colors duration-200 ${
-                                order.status === "cancelled" ||
-                                order.status === "delivered"
-                                  ? "opacity-50 cursor-not-allowed text-gray-400"
-                                  : "text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30"
-                              }`}
-                              title="Cancel Order"
+                            <Link
+                              href={`/admin/orders/${order.id}/edit`}
+                              className="p-2 text-yellow-600 hover:bg-yellow-50 dark:text-yellow-400 dark:hover:bg-yellow-900/30 rounded-lg transition-colors duration-200"
+                              title="Edit Order"
                             >
-                              <FiX className="w-4 h-4" />
-                            </button>
+                              <FiEdit className="w-4 h-4" />
+                            </Link>
+
                             <button
                               onClick={() =>
-                                handleDelete(order.id, order.orderNumber)
+                                updateOrderStatus(order.id, "processing")
+                              }
+                              disabled={order.status !== "pending"}
+                              className={`p-2 rounded-lg transition-colors duration-200 ${
+                                order.status !== "pending"
+                                  ? "opacity-50 cursor-not-allowed text-gray-400"
+                                  : "text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/30"
+                              }`}
+                              title="Confirm Order"
+                            >
+                              <FiCheck className="w-4 h-4" />
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                handleDelete(order.id, order.orderCode)
                               }
                               className="p-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors duration-200"
                               title="Delete"

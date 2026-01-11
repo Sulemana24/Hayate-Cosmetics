@@ -4,22 +4,16 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { getAuth } from "firebase/auth";
+import { useToast } from "@/components/ToastProvider";
 import {
   collection,
   doc,
   getDocs,
-  setDoc,
   deleteDoc,
   updateDoc,
 } from "firebase/firestore";
 import Image from "next/image";
-import {
-  FiTrash2,
-  FiPlus,
-  FiMinus,
-  FiShoppingCart,
-  FiShoppingBag,
-} from "react-icons/fi";
+import { FiTrash2, FiPlus, FiMinus, FiShoppingBag } from "react-icons/fi";
 
 interface CartItem {
   id: string;
@@ -36,15 +30,13 @@ export default function Cart() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isRemoving, setIsRemoving] = useState<string | null>(null);
   const router = useRouter();
-
+  const { showToast } = useToast();
   const auth = getAuth();
 
-  // Get current user
   useEffect(() => {
     if (auth.currentUser) setCurrentUserId(auth.currentUser.uid);
   }, [auth.currentUser]);
 
-  // Fetch cart items
   useEffect(() => {
     if (!currentUserId) return;
 
@@ -63,7 +55,11 @@ export default function Cart() {
         });
         setCartItems(items);
       } catch (err) {
-        console.error("Failed to fetch cart:", err);
+        showToast({
+          title: "Error",
+          message: "Failed to load cart items. Please try again.",
+          type: "error",
+        });
       } finally {
         setLoading(false);
       }
@@ -87,7 +83,11 @@ export default function Cart() {
       const itemRef = doc(db, "users", currentUserId, "cart", item.id);
       await updateDoc(itemRef, { quantity: newQuantity });
     } catch (err) {
-      console.error("Failed to update quantity:", err);
+      showToast({
+        title: "Error",
+        message: "Failed to update item quantity. Please try again.",
+        type: "error",
+      });
     }
   };
 
@@ -105,7 +105,11 @@ export default function Cart() {
         const itemRef = doc(db, "users", currentUserId, "cart", item.id);
         await deleteDoc(itemRef);
       } catch (err) {
-        console.error("Failed to remove item:", err);
+        showToast({
+          title: "Error",
+          message: "Failed to remove item. Please try again.",
+          type: "error",
+        });
       }
     }, 300);
   };

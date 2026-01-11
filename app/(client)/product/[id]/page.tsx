@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Product } from "@/types/product";
 import { db } from "@/lib/firebase";
 import { getAuth } from "firebase/auth";
+import { useToast } from "@/components/ToastProvider";
 import {
   doc,
   getDoc,
@@ -14,8 +15,6 @@ import {
   serverTimestamp,
   collection,
   getDocs,
-  query,
-  where,
   updateDoc,
 } from "firebase/firestore";
 import {
@@ -46,10 +45,15 @@ export default function ProductDetailPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
+  const { showToast } = useToast();
 
   const handleBuyNow = async () => {
     if (!currentUserId || !product) {
-      alert("You must be logged in to make a purchase.");
+      showToast({
+        title: "Error",
+        message: "You must be logged in to buy products.",
+        type: "error",
+      });
       return;
     }
 
@@ -57,6 +61,11 @@ export default function ProductDetailPage() {
       setIsAddingToCart(true);
 
       const cartCollectionRef = collection(db, "users", currentUserId, "cart");
+      showToast({
+        title: "Success",
+        message: "Proceeding to checkout...",
+        type: "success",
+      });
 
       const cartSnapshot = await getDocs(cartCollectionRef);
       const deletePromises = cartSnapshot.docs.map((docSnap) =>
@@ -79,8 +88,11 @@ export default function ProductDetailPage() {
 
       router.push("/checkout");
     } catch (error) {
-      console.error("Buy now failed:", error);
-      alert("Something went wrong. Please try again.");
+      showToast({
+        title: "Error",
+        message: "Failed to proceed to checkout. Please try again.",
+        type: "error",
+      });
     } finally {
       setIsAddingToCart(false);
     }
@@ -88,7 +100,11 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = async () => {
     if (!currentUserId || !product) {
-      alert("You must be logged in to add items to the cart.");
+      showToast({
+        title: "Error",
+        message: "You must be logged in to add products to cart.",
+        type: "error",
+      });
       return;
     }
     setIsAddingToCart(true);
@@ -114,23 +130,27 @@ export default function ProductDetailPage() {
         });
       }
 
-      // Optionally show toast or alert
-      alert("Added to cart!");
+      showToast({
+        title: "Success",
+        message: "Added to cart!",
+        type: "success",
+      });
     } catch (err) {
-      console.error("Failed to add to cart:", err);
-      alert("Failed to add to cart. Try again.");
+      showToast({
+        title: "Error",
+        message: "Failed to add to cart. Please try again.",
+        type: "error",
+      });
     } finally {
       setIsAddingToCart(false);
     }
   };
 
-  // Get current user ID
   useEffect(() => {
     const auth = getAuth();
     if (auth.currentUser) setCurrentUserId(auth.currentUser.uid);
   }, []);
 
-  // Fetch product
   useEffect(() => {
     if (!id) return;
 
@@ -138,7 +158,6 @@ export default function ProductDetailPage() {
       try {
         const productRef = doc(db, "products", id as string);
         const productSnap = await getDoc(productRef);
-
         const data = productSnap.data() as Product;
 
         if (productSnap.exists()) {
@@ -147,13 +166,16 @@ export default function ProductDetailPage() {
             id: data.id ?? productSnap.id,
           };
           setProduct(productData);
-          // Set initial selected image
           if (data.imageUrl) {
             setSelectedImage(data.imageUrl);
           }
         }
       } catch (err) {
-        console.error(err);
+        showToast({
+          title: "Error",
+          message: "Failed to load product. Please try again.",
+          type: "error",
+        });
       } finally {
         setLoading(false);
       }
@@ -162,7 +184,6 @@ export default function ProductDetailPage() {
     fetchProduct();
   }, [id]);
 
-  // Fetch favorite status
   useEffect(() => {
     const fetchFavoriteStatus = async () => {
       if (!currentUserId || !id) return;
@@ -172,14 +193,17 @@ export default function ProductDetailPage() {
         const favoriteSnap = await getDoc(favoriteRef);
         if (favoriteSnap.exists()) setIsFavorite(true);
       } catch (err) {
-        console.error("Error fetching favorite status:", err);
+        showToast({
+          title: "Error",
+          message: "Failed to load favorite status. Please try again.",
+          type: "error",
+        });
       }
     };
 
     fetchFavoriteStatus();
   }, [currentUserId, id]);
 
-  // Toggle favorite
   const handleToggleFavorite = async () => {
     if (!currentUserId || !product) return;
 
@@ -204,19 +228,31 @@ export default function ProductDetailPage() {
           category: product.category,
           addedAt: serverTimestamp(),
         });
+        showToast({
+          title: "Success",
+          message: "Added to favorites!",
+          type: "success",
+        });
       } else {
         await deleteDoc(favoriteRef);
+        showToast({
+          title: "Success",
+          message: "Removed from favorites!",
+          type: "success",
+        });
       }
     } catch (err) {
-      console.error("Failed to update favorite:", err);
       setIsFavorite(!nextFavoriteState);
-      alert("Failed to update favorite. Try again.");
+      showToast({
+        title: "Error",
+        message: "Failed to update favorite. Please try again.",
+        type: "error",
+      });
     } finally {
       setIsLoadingFavorite(false);
     }
   };
 
-  // Mock product images for gallery (in real app, fetch from product)
   const productImages = [product?.imageUrl || ""].filter(Boolean);
 
   if (loading)
@@ -251,7 +287,6 @@ export default function ProductDetailPage() {
       100
   );
 
-  // Mock reviews data
   const reviews = [
     {
       rating: 5,
@@ -313,7 +348,7 @@ export default function ProductDetailPage() {
                     <p>No image available</p>
                   </div>
                 )}
-                {/* Discount Badge */}
+
                 {product.originalPrice > product.discountedPrice && (
                   <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
                     -{discountPercentage}%
@@ -322,7 +357,6 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* Thumbnail Gallery */}
             <div className="flex gap-3 overflow-x-auto pb-2">
               {productImages.map((img, index) => (
                 <button
@@ -353,7 +387,6 @@ export default function ProductDetailPage() {
               ))}
             </div>
 
-            {/* Trust Badges */}
             <div className="grid grid-cols-3 gap-3 mt-6">
               <div className="flex items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-lg">
                 <FiTruck className="w-5 h-5 text-green-500" />
@@ -511,7 +544,7 @@ export default function ProductDetailPage() {
                 <button
                   onClick={handleAddToCart}
                   disabled={isAddingToCart}
-                  className="flex-1 flex items-center justify-center gap-3 bg-gradient-to-r from-[#e39a89] to-[#d87a6a] text-white px-6 py-4 rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-lg hover:shadow-xl"
+                  className="flex-1 flex items-center justify-center gap-3 bg-gradient-to-r from-[#e39a89] to-[#d87a6a] text-white px-6 py-4 rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-lg hover:shadow-xl cursor-pointer"
                 >
                   <FiShoppingCart className="w-5 h-5" />
                   {isAddingToCart
@@ -524,7 +557,7 @@ export default function ProductDetailPage() {
                 <button
                   onClick={handleToggleFavorite}
                   disabled={isLoadingFavorite}
-                  className={`flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-semibold border transition-all ${
+                  className={`flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-semibold border transition-all cursor-pointer ${
                     isFavorite
                       ? "border-red-500 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"
                       : "border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -539,7 +572,7 @@ export default function ProductDetailPage() {
 
               <button
                 onClick={handleBuyNow}
-                className="w-full mt-3 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-xl hover:opacity-90 transition-opacity"
+                className="w-full mt-3 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-xl hover:opacity-90 transition-opacity cursor-pointer"
               >
                 Buy Now
               </button>

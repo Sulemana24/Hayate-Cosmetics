@@ -19,16 +19,13 @@ import {
 import Image from "next/image";
 import {
   FiArrowRight,
-  FiStar,
   FiChevronLeft,
   FiChevronRight,
-  FiTag,
   FiTrendingUp,
   FiGift,
 } from "react-icons/fi";
 import Link from "next/link";
 
-// Define Product type
 interface Product {
   id: string;
   name: string;
@@ -78,12 +75,11 @@ export default function Home() {
     fetchNewArrivals();
   }, []);
 
-  // Fetch Best Sellers (products with highest rating or most purchases)
   useEffect(() => {
     const fetchBestSellers = async () => {
       try {
         const productsRef = collection(db, "products");
-        // Try to get highly rated products
+
         const q = query(productsRef, where("rating", ">=", 4), limit(8));
         const snapshot = await getDocs(q);
         const products = snapshot.docs.map((doc) => ({
@@ -91,7 +87,6 @@ export default function Home() {
           ...doc.data(),
         })) as Product[];
 
-        // Fallback to random products if no rated products
         if (products.length === 0) {
           const allProducts = await getDocs(collection(db, "products"));
           const all = allProducts.docs.map((doc) => ({

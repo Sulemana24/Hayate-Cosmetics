@@ -3,17 +3,15 @@
 import { useState, useEffect, useRef } from "react";
 import { getAuth } from "firebase/auth";
 import { db } from "@/lib/firebase";
-import { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
+import { useToast } from "@/components/ToastProvider";
 import {
   collection,
   getDocs,
   doc,
   writeBatch,
-  addDoc,
   setDoc,
   updateDoc,
   serverTimestamp,
-  FieldValue,
   increment,
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
@@ -85,7 +83,7 @@ interface PaystackOptions {
 export default function CheckoutPage() {
   const router = useRouter();
   const auth = getAuth();
-
+  const { showToast } = useToast();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -177,7 +175,10 @@ export default function CheckoutPage() {
         setCartItems(items);
         cartItemsRef.current = items;
       } catch (err) {
-        console.error("Failed to fetch cart:", err);
+        showToast({
+          type: "error",
+          message: "Failed to load cart items. Please try again.",
+        });
       } finally {
         setLoading(false);
       }
@@ -201,7 +202,10 @@ export default function CheckoutPage() {
       }, 0);
     };
     script.onerror = () => {
-      console.error("Failed to load Paystack script");
+      showToast({
+        type: "error",
+        message: "Failed to load payment gateway. Please try again later.",
+      });
       setTimeout(() => {
         setPaystackLoaded(false);
       }, 0);
@@ -226,7 +230,6 @@ export default function CheckoutPage() {
       shippingFee,
       tax: 0,
       totalAmount: finalTotal,
-
       status: "pending_payment",
       paymentStatus: "pending",
       paymentMethod: "paystack",
@@ -246,7 +249,6 @@ export default function CheckoutPage() {
       customerName: `${formData.firstName} ${formData.lastName}`,
       customerEmail: formData.email,
       customerPhone: formData.phone,
-
       orderCode,
       createdAt: now,
       updatedAt: now,
@@ -345,9 +347,10 @@ export default function CheckoutPage() {
       );
 
       if (missingFields.length > 0) {
-        alert(
-          `Please fill in all required fields: ${missingFields.join(", ")}`
-        );
+        showToast({
+          type: "error",
+          message: "Please complete all required shipping information.",
+        });
         return;
       }
     }
@@ -376,14 +379,6 @@ export default function CheckoutPage() {
 
     const tempId = tempOrderIdRef.current;
     const userId = currentUserIdRef.current;
-    const items = cartItemsRef.current;
-
-    console.log("Callback data:", {
-      tempId,
-      userId,
-      hasItems: items.length > 0,
-      responseReference: response.reference,
-    });
 
     try {
       await updateProductQuantities();
@@ -405,26 +400,37 @@ export default function CheckoutPage() {
         router.push("/orders?payment=success");
       }, 3000);
     } catch (error: unknown) {
-      console.error("Payment update error:", error);
+      showToast({
+        type: "error",
+        message:
+          "Payment was successful but there was an error updating your order. Please contact support.",
+      });
       setProcessing(false);
 
       if (
         error instanceof Error &&
         error.message.includes("Missing order data")
       ) {
-        alert(
-          "Payment was successful but we couldn't find your order data. Please contact support with your payment reference."
-        );
+        showToast({
+          type: "error",
+          message:
+            "Payment was successful but there was an error updating your order. Please contact support.",
+        });
       } else {
-        alert(
-          "Payment was successful but there was an error updating your order. Please contact support."
-        );
+        showToast({
+          type: "error",
+          message:
+            "Payment was successful but there was an error updating your order. Please contact support.",
+        });
       }
     }
   };
 
   const onPaymentFailed = (response: PaystackResponse) => {
-    alert(`Payment failed: ${response.message || "Please try again"}`);
+    showToast({
+      type: "error",
+      message: "Payment failed or was cancelled. Please try again.",
+    });
   };
 
   const handlePayment = async () => {
@@ -434,29 +440,44 @@ export default function CheckoutPage() {
       !formData.email ||
       !formData.phone
     ) {
-      alert("Please complete your shipping information.");
+      showToast({
+        type: "error",
+        message: "Please complete all required shipping information.",
+      });
       setActiveStep(1);
       return;
     }
 
     if (!currentUserId) {
-      alert("Please log in to complete your order.");
+      showToast({
+        type: "error",
+        message: "You must be logged in to proceed with payment.",
+      });
       router.push("/login");
       return;
     }
 
     if (!paystackLoaded) {
-      alert("Payment gateway is loading. Please wait.");
+      showToast({
+        type: "error",
+        message: "Payment gateway is loading. Please wait.",
+      });
       return;
     }
 
     if (!window.PaystackPop) {
-      alert("Payment service unavailable.");
+      showToast({
+        type: "error",
+        message: "Payment gateway is not available. Please try again later.",
+      });
       return;
     }
 
     if (!paystackPublicKey) {
-      alert("Payment configuration error.");
+      showToast({
+        type: "error",
+        message: "Payment configuration error.",
+      });
       return;
     }
 
@@ -496,9 +517,11 @@ export default function CheckoutPage() {
       const handler = window.PaystackPop.setup(paystackConfig);
       handler.openIframe();
     } catch (error) {
-      console.error("Error initiating payment:", error);
       setProcessing(false);
-      alert("Error preparing payment. Please try again.");
+      showToast({
+        type: "error",
+        message: "Error preparing payment. Please try again.",
+      });
     }
   };
 
