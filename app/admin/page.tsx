@@ -150,7 +150,6 @@ export default function AdminAuthPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#faf7f5] to-[#f0ece9] dark:from-gray-900 dark:to-gray-800 p-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-[#e39a89] rounded-2xl shadow-lg mb-4 p-4">
             <Image
@@ -167,7 +166,7 @@ export default function AdminAuthPage() {
           </h2>
           <p className="text-gray-600 dark:text-gray-300">
             {mode === "login"
-              ? "Sign in to your admin accounty"
+              ? "Sign in to your admin account"
               : "Setup your admin credentials"}
           </p>
         </div>

@@ -5,6 +5,7 @@ import ClientNavbar from "../../components/Navbar";
 import ClientFooter from "../../components/Footer";
 import { UploadThingProvider } from "../providers";
 import { AuthProvider } from "@/context/AuthContext";
+import { ToastProvider } from "@/components/ToastProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,14 +21,16 @@ export default function ClientLayout({
   children: React.ReactNode;
 }) {
   return (
-    <AuthProvider>
-      <UploadThingProvider>
-        <div className={`${inter.className} bg-gray-50 dark:bg-gray-900`}>
-          <ClientNavbar />
-          <main className="min-h-screen">{children}</main>
-          <ClientFooter />
-        </div>
-      </UploadThingProvider>
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <UploadThingProvider>
+          <div className={`${inter.className} bg-gray-50 dark:bg-gray-900`}>
+            <ClientNavbar />
+            <main className="min-h-screen">{children}</main>
+            <ClientFooter />
+          </div>
+        </UploadThingProvider>
+      </AuthProvider>
+    </ToastProvider>
   );
 }

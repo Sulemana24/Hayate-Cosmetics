@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import Link from "next/link";
+import { useToast } from "@/components/ToastProvider";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { FiMail, FiLock, FiEye, FiEyeOff, FiUser } from "react-icons/fi";
@@ -14,14 +15,13 @@ export default function LoginClient() {
 
   const redirect = searchParams.get("redirect") || "/";
   const action = searchParams.get("action");
-
   const { login, signup } = useAuth();
-
   const [isLogin, setIsLogin] = useState(action !== "signup");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [buttonLoading, setButtonLoading] = useState(false);
+  const { showToast } = useToast();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -37,19 +37,28 @@ export default function LoginClient() {
     setButtonLoading(true);
 
     if (!formData.email || !formData.password) {
-      setError("Email and password are required");
+      showToast({
+        type: "error",
+        message: "Email and password are required.",
+      });
       setButtonLoading(false);
       return;
     }
 
     if (!isLogin && formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+      showToast({
+        type: "error",
+        message: "Passwords do not match.",
+      });
       setButtonLoading(false);
       return;
     }
 
     if (!isLogin && !formData.name) {
-      setError("Name is required for signup");
+      showToast({
+        type: "error",
+        message: "Error preparing payment. Please try again.",
+      });
       setButtonLoading(false);
       return;
     }
@@ -57,29 +66,57 @@ export default function LoginClient() {
     try {
       if (isLogin) {
         await login(formData.email, formData.password);
-        setSuccess("Login successful!");
+        showToast({
+          type: "success",
+          message: "Logged in successfully!",
+        });
         setTimeout(() => router.push(redirect), 1000);
       } else {
         await signup(formData.email, formData.password, formData.name);
-        setSuccess("Account created successfully!");
+        showToast({
+          type: "success",
+          message: "Account created successfully! Redirecting to login...",
+        });
         setTimeout(() => router.push(redirect), 1000);
       }
     } catch (err: unknown) {
       if (err instanceof Error) {
         const msg = err.message;
         if (msg.includes("auth/email-already-in-use"))
-          setError("Email already exists.");
+          showToast({
+            type: "error",
+            message: "Email is already in use.",
+          });
         else if (msg.includes("auth/invalid-email"))
-          setError("Invalid email address.");
+          showToast({
+            type: "error",
+            message: "Invalid email address.",
+          });
         else if (msg.includes("auth/weak-password"))
-          setError("Password should be at least 6 characters.");
+          showToast({
+            type: "error",
+            message: "Password is too weak.",
+          });
         else if (msg.includes("auth/user-not-found"))
-          setError("No account found with this email.");
+          showToast({
+            type: "error",
+            message: "No account found with this email.",
+          });
         else if (msg.includes("auth/wrong-password"))
-          setError("Incorrect password.");
-        else setError("Authentication failed.");
+          showToast({
+            type: "error",
+            message: "Incorrect password.",
+          });
+        else
+          showToast({
+            type: "error",
+            message: "Authentication failed",
+          });
       } else {
-        setError("Unexpected error occurred.");
+        showToast({
+          type: "error",
+          message: "An unexpected error occurred.",
+        });
       }
     } finally {
       setButtonLoading(false);
@@ -117,7 +154,6 @@ export default function LoginClient() {
             </p>
           </div>
 
-          {/* Error/Success Messages */}
           {error && (
             <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl">
               <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
@@ -132,7 +168,6 @@ export default function LoginClient() {
             </div>
           )}
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             {!isLogin && (
               <div>
@@ -279,7 +314,6 @@ export default function LoginClient() {
                     setIsLogin(!isLogin);
                     setError("");
                     setSuccess("");
-                    // Clear password when switching
                     setFormData((prev) => ({
                       ...prev,
                       password: "",
