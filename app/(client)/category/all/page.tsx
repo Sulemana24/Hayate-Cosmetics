@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useToast } from "@/components/ToastProvider";
 import ProductCard from "@/components/ProductCard";
 import { db } from "@/lib/firebase";
 import {
@@ -8,7 +9,6 @@ import {
   getDocs,
   query,
   orderBy,
-  where,
   Timestamp,
 } from "firebase/firestore";
 import { Product } from "@/types/product";
@@ -30,8 +30,8 @@ export default function AllProductsPage() {
   const [viewMode, setViewMode] = useState("grid");
   const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const { showToast } = useToast();
 
-  // Categories with images
   const categories = [
     {
       id: 1,
@@ -67,7 +67,6 @@ export default function AllProductsPage() {
     },
   ];
 
-  // Sort options
   const sortOptions = [
     { value: "featured", label: "Featured" },
     { value: "newest", label: "Newest First" },
@@ -77,7 +76,6 @@ export default function AllProductsPage() {
     { value: "name-desc", label: "Name: Z to A" },
   ];
 
-  // Fetch all products
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -94,7 +92,10 @@ export default function AllProductsPage() {
         setProducts(productsData);
         setFilteredProducts(productsData);
       } catch (error) {
-        console.error("Error fetching products:", error);
+        showToast({
+          type: "error",
+          message: "Failed to fetch products.",
+        });
       } finally {
         setLoading(false);
       }
@@ -103,11 +104,9 @@ export default function AllProductsPage() {
     fetchProducts();
   }, []);
 
-  // Filter and sort products
   useEffect(() => {
     let result = [...products];
 
-    // Filter by category
     if (activeCategory !== "all") {
       result = result.filter(
         (product) =>
@@ -115,14 +114,12 @@ export default function AllProductsPage() {
       );
     }
 
-    // Filter by price range
     result = result.filter(
       (product) =>
         product.discountedPrice >= priceRange.min &&
         product.discountedPrice <= priceRange.max
     );
 
-    // Filter by search term
     if (searchTerm) {
       result = result.filter(
         (product) =>
@@ -134,7 +131,6 @@ export default function AllProductsPage() {
       );
     }
 
-    // Sort products
     switch (sortBy) {
       case "newest":
         result.sort((a, b) => {
@@ -176,7 +172,6 @@ export default function AllProductsPage() {
     ).length;
   };
 
-  // Reset filters
   const resetFilters = () => {
     setActiveCategory("all");
     setPriceRange({ min: 0, max: 1000 });

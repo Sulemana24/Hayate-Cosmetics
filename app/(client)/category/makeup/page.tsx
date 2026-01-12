@@ -1,27 +1,13 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useToast } from "@/components/ToastProvider";
 import ProductCard from "@/components/ProductCard";
 import CategoryHeader from "@/components/category/CategoryHeader";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { Product } from "@/types/product";
 import Image7 from "@/public/images/mak.jpg";
-
-async function getMakeupProducts() {
-  try {
-    const productsRef = collection(db, "products");
-    const q = query(productsRef, where("category", "==", "makeup"));
-    const snapshot = await getDocs(q);
-
-    const products: Product[] = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Product[];
-
-    return products;
-  } catch (error) {
-    console.error("Error fetching makeup products:", error);
-    return [];
-  }
-}
 
 const makeupCategories = [
   { id: 1, name: "Face", count: "20 Products", icon: "💄" },
@@ -39,8 +25,42 @@ const makeupTypes = [
   { id: 6, name: "Concealer", color: "bg-yellow-100 text-yellow-800" },
 ];
 
-export default async function MakeupPage() {
-  const products = await getMakeupProducts();
+export default function MakeupPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const productsRef = collection(db, "products");
+        const q = query(productsRef, where("categorySlug", "==", "makeup"));
+        const snapshot = await getDocs(q);
+
+        const productsData: Product[] = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toMillis
+              ? data.createdAt.toMillis()
+              : null,
+            updatedAt: data.updatedAt?.toMillis
+              ? data.updatedAt.toMillis()
+              : null,
+          } as Product;
+        });
+
+        setProducts(productsData);
+      } catch (error) {
+        showToast({
+          type: "error",
+          message: "Failed to fetch makeup products",
+        });
+      }
+    };
+
+    fetchProducts();
+  }, [showToast]);
 
   return (
     <>
