@@ -370,59 +370,46 @@ export default function CheckoutPage() {
     }
   };
 
-  const onPaymentSuccess = async (response: PaystackResponse) => {
-    if (processing === false && paymentSuccess === true) {
-      return;
-    }
-
-    setProcessing(true);
-
-    const tempId = tempOrderIdRef.current;
+  const onPaymentSuccess = async (
+    response: PaystackResponse,
+    orderId: string
+  ) => {
     const userId = currentUserIdRef.current;
 
-    try {
-      await updateProductQuantities();
-      await updateOrderAfterPayment(
-        response.reference,
-        response,
-        tempId,
-        userId
-      );
-
-      setPaymentSuccess(true);
-      setProcessing(false);
-
-      setOrderId(tempId);
-
-      setCartItems([]);
-
-      setTimeout(() => {
-        router.push("/orders?payment=success");
-      }, 3000);
-    } catch (error: unknown) {
+    if (!orderId || !userId) {
       showToast({
         type: "error",
         message:
           "Payment was successful but there was an error updating your order. Please contact support.",
       });
       setProcessing(false);
+      return;
+    }
 
-      if (
-        error instanceof Error &&
-        error.message.includes("Missing order data")
-      ) {
-        showToast({
-          type: "error",
-          message:
-            "Payment was successful but there was an error updating your order. Please contact support.",
-        });
-      } else {
-        showToast({
-          type: "error",
-          message:
-            "Payment was successful but there was an error updating your order. Please contact support.",
-        });
-      }
+    try {
+      await updateProductQuantities();
+      await updateOrderAfterPayment(
+        response.reference,
+        response,
+        orderId,
+        userId
+      );
+
+      setPaymentSuccess(true);
+      setProcessing(false);
+      setOrderId(orderId);
+      setCartItems([]);
+
+      setTimeout(() => {
+        router.push("/orders?payment=success");
+      }, 3000);
+    } catch (error) {
+      showToast({
+        type: "error",
+        message:
+          "Payment was successful but there was an error updating your order. Please contact support.",
+      });
+      setProcessing(false);
     }
   };
 
@@ -504,7 +491,7 @@ export default function CheckoutPage() {
         },
         callback: (response: PaystackResponse) => {
           if (response.status === "success") {
-            onPaymentSuccess(response);
+            onPaymentSuccess(response, tempId);
           } else {
             onPaymentFailed(response);
           }
@@ -580,28 +567,6 @@ export default function CheckoutPage() {
             <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base mb-2">
               Your order has been placed successfully.
             </p>
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-6 sm:mb-8">
-              Order ID: <span className="font-mono font-bold">{orderId}</span>
-            </p>
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8 max-w-md mx-auto">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 text-sm sm:text-base">
-                Order Summary
-              </h3>
-              <div className="space-y-1.5 sm:space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Items ({itemCount})</span>
-                  <span>₵{totalPrice.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Shipping</span>
-                  <span>₵{shippingFee.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-base sm:text-lg font-bold pt-2 border-t">
-                  <span>Total</span>
-                  <span>₵{finalTotal.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
               <button
                 onClick={() => router.push("/orders")}
@@ -616,9 +581,6 @@ export default function CheckoutPage() {
                 Continue Shopping
               </button>
             </div>
-            <p className="text-gray-500 dark:text-gray-500 text-xs sm:text-sm mt-4 sm:mt-6">
-              A confirmation email has been sent to {formData.email}
-            </p>
           </div>
         </div>
       </div>

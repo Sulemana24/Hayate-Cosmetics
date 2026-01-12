@@ -128,7 +128,6 @@ export default function Home() {
           };
         }) as Product[];
 
-        // Filter products with actual discounts
         const discountedProducts = products.filter(
           (p) => p.discountPercentage > 5
         );
@@ -182,7 +181,6 @@ export default function Home() {
     }, 300);
   };
 
-  // Get current slide products
   const getCurrentSlideProducts = () => {
     const startIndex = currentSlide * 4;
     return newArrivals.slice(startIndex, startIndex + 4);
@@ -191,11 +189,7 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       <ClientNavbar />
-
-      {/* Hero Section */}
       <HeroSection />
-
-      {/* New Arrivals Slider */}
       <section className="py-16 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center mb-8">

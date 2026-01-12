@@ -13,22 +13,18 @@ export default function TestimonialFAQSection() {
   return (
     <div className="bg-gradient-to-b from-white to-gray-50 py-16">
       <div className="container mx-auto px-4 md:px-6">
-        {/* Testimonials Section */}
-        <TestimonialsSection />
-
-        {/* FAQ Section */}
+        {/*         <TestimonialsSection /> */}
         <FAQSection />
       </div>
     </div>
   );
 }
 
-// Testimonials Component
 function TestimonialsSection() {
   const testimonials = [
     {
       id: 1,
-      name: "Sarah Johnson",
+      name: "Ama Serwaa",
       location: "Accra, Ghana",
       comment:
         "The skincare products transformed my complexion! My skin has never felt better. The Vitamin C serum is now a staple in my routine.",
@@ -46,7 +42,7 @@ function TestimonialsSection() {
     },
     {
       id: 3,
-      name: "Ama Mensah",
+      name: "Sule Iddi",
       location: "Cape Coast, Ghana",
       comment:
         "I was skeptical about online beauty shopping, but Glamour exceeded expectations. Packaging was secure and products fresh.",
@@ -82,12 +78,10 @@ function TestimonialsSection() {
     },
   ];
 
-  // Get first character of name for profile pic
   const getInitials = (name: string) => {
     return name.charAt(0).toUpperCase();
   };
 
-  // Generate random color based on name for consistency
   const getAvatarColor = (name: string) => {
     const colors = [
       "from-[#e39a89] to-[#d87a6a]",
@@ -117,8 +111,8 @@ function TestimonialsSection() {
     );
   };
 
-  return (
-    <section className="mb-20">
+  return {
+    /* <section className="mb-20">
       <div className="text-center mb-12">
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#e39a89]/10 to-[#d87a6a]/10 rounded-full mb-4">
           <FiMessageCircle className="w-5 h-5 text-[#e39a89]" />
@@ -134,7 +128,7 @@ function TestimonialsSection() {
       </div>
 
       <div className="relative">
-        {/* Testimonials Grid */}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {testimonials
             .slice(currentIndex, currentIndex + testimonialsPerPage)
@@ -143,7 +137,7 @@ function TestimonialsSection() {
                 key={testimonial.id}
                 className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-100"
               >
-                {/* Rating */}
+                
                 <div className="flex items-center gap-1 mb-4">
                   {[...Array(5)].map((_, i) => (
                     <FiStar
@@ -160,12 +154,12 @@ function TestimonialsSection() {
                   </span>
                 </div>
 
-                {/* Comment */}
+      
                 <p className="text-gray-700 mb-6 leading-relaxed">
                   &ldquo;{testimonial.comment}&rdquo;
                 </p>
 
-                {/* Customer Info */}
+               
                 <div className="flex items-center gap-4">
                   <div
                     className={`w-14 h-14 rounded-full bg-gradient-to-br ${getAvatarColor(
@@ -187,7 +181,7 @@ function TestimonialsSection() {
             ))}
         </div>
 
-        {/* Navigation Buttons */}
+        
         <div className="flex justify-center gap-4 mb-12">
           <button
             onClick={prevTestimonials}
@@ -205,8 +199,8 @@ function TestimonialsSection() {
           </button>
         </div>
       </div>
-    </section>
-  );
+    </section> */
+  };
 }
 
 // FAQ Component
