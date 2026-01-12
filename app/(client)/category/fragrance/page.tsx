@@ -1,27 +1,13 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useToast } from "@/components/ToastProvider";
 import ProductCard from "@/components/ProductCard";
 import CategoryHeader from "@/components/category/CategoryHeader";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
 import { Product } from "@/types/product";
 import Image3 from "@/public/images/perbg.jpg";
-
-async function getFragranceProducts() {
-  try {
-    const productsRef = collection(db, "products");
-    const q = query(productsRef, where("category", "==", "fragrance"));
-    const snapshot = await getDocs(q);
-
-    const products: Product[] = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Product[];
-
-    return products;
-  } catch (error) {
-    console.error("Error fetching fragrance products:", error);
-    return [];
-  }
-}
 
 const fragranceTypes = [
   { id: 1, name: "Eau de Parfum", count: "18 Products" },
@@ -39,11 +25,51 @@ const scentFamilies = [
   { id: 5, name: "Fresh", color: "bg-blue-100 text-blue-800" },
 ];
 
-export default async function FragrancePage() {
-  const products = await getFragranceProducts();
+export default function FragrancePage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const productsRef = collection(db, "products");
+        const q = query(
+          productsRef,
+          where("categorySlug", "==", "fragrance"),
+          orderBy("createdAt", "desc")
+        );
+
+        const snapshot = await getDocs(q);
+
+        const productsData: Product[] = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toMillis
+              ? data.createdAt.toMillis()
+              : null,
+            updatedAt: data.updatedAt?.toMillis
+              ? data.updatedAt.toMillis()
+              : null,
+          } as Product;
+        });
+
+        setProducts(productsData);
+      } catch (error) {
+        showToast({
+          type: "error",
+          message: "Failed to fetch fragrance products",
+        });
+      }
+    };
+
+    fetchProducts();
+  }, [showToast]);
 
   return (
     <>
+      {/* Category Header */}
       <CategoryHeader
         title="Fragrance Collection"
         subtitle="Signature Scents"

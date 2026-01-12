@@ -1,5 +1,6 @@
 import ProductCard from "@/components/ProductCard";
 import CategoryHeader from "@/components/category/CategoryHeader";
+import SkincareSubcategories from "@/components/category/SkincareSubcategories";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
 import { Product } from "@/types/product";
@@ -83,28 +84,13 @@ export default async function SkincarePage() {
         </div>
       </section>
 
-      {/* Subcategories */}
+      {/* Subcategories (Client Component with Toast) */}
       <section className="py-12 bg-white">
         <div className="container mx-auto px-4 md:px-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">
             Shop by Type
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {skincareSubcategories.map((subcat) => (
-              <a
-                key={subcat.id}
-                href={`#${subcat.name.toLowerCase()}`}
-                className="group p-4 rounded-xl bg-gray-50 hover:bg-gradient-to-r hover:from-[#e39a89] hover:to-[#d87a6a] transition-all duration-300 transform hover:-translate-y-1"
-              >
-                <h3 className="font-semibold text-gray-800 group-hover:text-white mb-1">
-                  {subcat.name}
-                </h3>
-                <p className="text-sm text-gray-500 group-hover:text-white/80">
-                  {subcat.count}
-                </p>
-              </a>
-            ))}
-          </div>
+          <SkincareSubcategories subcategories={skincareSubcategories} />
         </div>
       </section>
 
@@ -141,55 +127,6 @@ export default async function SkincarePage() {
               ))}
             </div>
           )}
-        </div>
-      </section>
-
-      {/* Skincare Tips */}
-      <section className="py-16 bg-gradient-to-r from-[#faf7f5] to-white">
-        <div className="container mx-auto px-4 md:px-6">
-          <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">
-            Skincare Tips & Advice
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white p-6 rounded-2xl shadow-lg transform hover:-translate-y-2 transition-all duration-300">
-              <div className="w-12 h-12 rounded-full bg-[#e39a89]/10 flex items-center justify-center mb-4">
-                <span className="text-2xl">🌿</span>
-              </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">
-                Natural Ingredients
-              </h3>
-              <p className="text-gray-600">
-                Our products use organic ingredients that work in harmony with
-                your skin&apos;s natural processes.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl shadow-lg transform hover:-translate-y-2 transition-all duration-300">
-              <div className="w-12 h-12 rounded-full bg-[#e39a89]/10 flex items-center justify-center mb-4">
-                <span className="text-2xl">💧</span>
-              </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">
-                Hydration First
-              </h3>
-              <p className="text-gray-600">
-                Proper hydration is key to glowing skin. Layer products from
-                thinnest to thickest consistency.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl shadow-lg transform hover:-translate-y-2 transition-all duration-300">
-              <div className="w-12 h-12 rounded-full bg-[#e39a89]/10 flex items-center justify-center mb-4">
-                <span className="text-2xl">☀️</span>
-              </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">
-                Sun Protection
-              </h3>
-              <p className="text-gray-600">
-                Always finish your morning routine with SPF to protect against
-                UV damage and premature aging.
-              </p>
-            </div>
-          </div>
         </div>
       </section>
     </>

@@ -1,27 +1,13 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useToast } from "@/components/ToastProvider";
 import ProductCard from "@/components/ProductCard";
 import CategoryHeader from "@/components/category/CategoryHeader";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
 import { Product } from "@/types/product";
 import Image2 from "@/public/images/accbg.jpg";
-
-async function getAccessoriesProducts() {
-  try {
-    const productsRef = collection(db, "products");
-    const q = query(productsRef, where("category", "==", "accessories"));
-    const snapshot = await getDocs(q);
-
-    const products: Product[] = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Product[];
-
-    return products;
-  } catch (error) {
-    console.error("Error fetching accessories products:", error);
-    return [];
-  }
-}
 
 const accessoriesTypes = [
   { id: 1, name: "Sunglasses", count: "10 Products", icon: "🕶️" },
@@ -30,8 +16,46 @@ const accessoriesTypes = [
   { id: 4, name: "Hair Accessories", count: "4 Products", icon: "👑" },
 ];
 
-export default async function AccessoriesPage() {
-  const products = await getAccessoriesProducts();
+export default function AccessoriesPage() {
+  const { showToast } = useToast();
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const productsRef = collection(db, "products");
+        const q = query(
+          productsRef,
+          where("categorySlug", "==", "accessories"),
+          orderBy("createdAt", "desc")
+        );
+        const snapshot = await getDocs(q);
+
+        const productsData: Product[] = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toMillis
+              ? data.createdAt.toMillis()
+              : null,
+            updatedAt: data.updatedAt?.toMillis
+              ? data.updatedAt.toMillis()
+              : null,
+          } as Product;
+        });
+
+        setProducts(productsData);
+      } catch (error) {
+        showToast({
+          type: "error",
+          message: "Failed to fetch accessories products.",
+        });
+      }
+    };
+
+    fetchProducts();
+  }, [showToast]);
 
   return (
     <>

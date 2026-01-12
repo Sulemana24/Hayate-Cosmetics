@@ -37,6 +37,15 @@ export default function Cart() {
     if (auth.currentUser) setCurrentUserId(auth.currentUser.uid);
   }, [auth.currentUser]);
 
+  const handleClick = () => {
+    setLoading(true);
+
+    setTimeout(() => {
+      router.push("/checkout");
+      setLoading(false);
+    }, 2000);
+  };
+
   useEffect(() => {
     if (!currentUserId) return;
 
@@ -56,7 +65,6 @@ export default function Cart() {
         setCartItems(items);
       } catch (err) {
         showToast({
-          title: "Error",
           message: "Failed to load cart items. Please try again.",
           type: "error",
         });
@@ -84,7 +92,6 @@ export default function Cart() {
       await updateDoc(itemRef, { quantity: newQuantity });
     } catch (err) {
       showToast({
-        title: "Error",
         message: "Failed to update item quantity. Please try again.",
         type: "error",
       });
@@ -96,13 +103,17 @@ export default function Cart() {
 
     setIsRemoving(item.id);
 
-    // Add a slight delay for animation
     setTimeout(async () => {
       setCartItems((prev) => prev.filter((ci) => ci.id !== item.id));
       setIsRemoving(null);
 
       try {
         const itemRef = doc(db, "users", currentUserId, "cart", item.id);
+        showToast({
+          title: "Item Removed",
+          message: `${item.name} has been removed from your cart.`,
+          type: "info",
+        });
         await deleteDoc(itemRef);
       } catch (err) {
         showToast({
@@ -124,8 +135,10 @@ export default function Cart() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-500 mb-4"></div>
-        <p className="text-gray-600 dark:text-gray-400">Loading your cart...</p>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#d87a6a] mb-4"></div>
+        <p className="text-gray-600 dark:text-gray-400">
+          Proceeding to checkout...
+        </p>
       </div>
     );
   }
@@ -189,7 +202,6 @@ export default function Cart() {
                 }`}
               >
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-                  {/* Product Image */}
                   <div className="relative flex-shrink-0">
                     {item.imageUrl ? (
                       <div className="relative w-24 h-24 sm:w-28 sm:h-28 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-700">
@@ -207,7 +219,6 @@ export default function Cart() {
                     )}
                   </div>
 
-                  {/* Product Details */}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-gray-900 dark:text-white text-lg mb-2">
                       {item.name}
@@ -221,12 +232,11 @@ export default function Cart() {
                       </span>
                     </div>
 
-                    {/* Quantity Controls */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <button
                           onClick={() => handleUpdateQuantity(item, -1)}
-                          className="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors duration-200"
+                          className="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors duration-200 cursor-pointer"
                           aria-label="Decrease quantity"
                         >
                           <FiMinus className="w-4 h-4" />
@@ -238,7 +248,7 @@ export default function Cart() {
                         </div>
                         <button
                           onClick={() => handleUpdateQuantity(item, 1)}
-                          className="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors duration-200"
+                          className="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors duration-200 cursor-pointer"
                           aria-label="Increase quantity"
                         >
                           <FiPlus className="w-4 h-4" />
@@ -251,7 +261,7 @@ export default function Cart() {
                         </div>
                         <button
                           onClick={() => handleRemoveItem(item)}
-                          className="flex items-center gap-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-200"
+                          className="flex items-center gap-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-200 cursor-pointer"
                         >
                           <FiTrash2 className="w-5 h-5" />
                           <span className="text-sm font-medium">Remove</span>
@@ -265,7 +275,6 @@ export default function Cart() {
           </div>
         </div>
 
-        {/* Order Summary Section */}
         <div className="lg:w-1/3">
           <div className="sticky top-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
@@ -294,10 +303,41 @@ export default function Cart() {
             </div>
 
             <button
-              onClick={() => router.push("/checkout")}
-              className="w-full py-4 bg-[#d87a6a] text-white font-bold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 mb-4"
+              onClick={handleClick}
+              disabled={loading}
+              className={`w-full py-4 text-white font-bold rounded-xl transition-all duration-300 shadow-lg mb-4 cursor-pointer ${
+                loading
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-[#d87a6a] hover:shadow-xl transform hover:-translate-y-0.5"
+              }`}
             >
-              Proceed to Checkout
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg
+                    className="animate-spin h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                    ></path>
+                  </svg>
+                  Processing...
+                </span>
+              ) : (
+                "Proceed to Checkout"
+              )}
             </button>
 
             <div className="text-center">

@@ -57,39 +57,34 @@ export default function ProductDetailPage() {
       return;
     }
 
-    try {
-      setIsAddingToCart(true);
+    setIsAddingToCart(true);
 
-      const cartCollectionRef = collection(db, "users", currentUserId, "cart");
+    try {
+      const cartRef = doc(db, "users", currentUserId, "cart", product.id);
+      const cartSnap = await getDoc(cartRef);
+
+      if (!cartSnap.exists()) {
+        await setDoc(cartRef, {
+          productId: product.id,
+          name: product.name,
+          imageUrl: product.imageUrl,
+          price: product.discountedPrice,
+          category: product.category,
+          quantity,
+          addedAt: serverTimestamp(),
+          buyNow: true,
+        });
+      }
+
       showToast({
         title: "Success",
         message: "Proceeding to checkout...",
         type: "success",
       });
 
-      const cartSnapshot = await getDocs(cartCollectionRef);
-      const deletePromises = cartSnapshot.docs.map((docSnap) =>
-        deleteDoc(docSnap.ref)
-      );
-      await Promise.all(deletePromises);
-
-      const cartItemRef = doc(db, "users", currentUserId, "cart", product.id);
-
-      await setDoc(cartItemRef, {
-        productId: product.id,
-        name: product.name,
-        imageUrl: product.imageUrl,
-        price: product.discountedPrice,
-        category: product.category,
-        quantity,
-        addedAt: serverTimestamp(),
-        buyNow: true,
-      });
-
       router.push("/checkout");
-    } catch (error) {
+    } catch (err) {
       showToast({
-        title: "Error",
         message: "Failed to proceed to checkout. Please try again.",
         type: "error",
       });
@@ -101,12 +96,12 @@ export default function ProductDetailPage() {
   const handleAddToCart = async () => {
     if (!currentUserId || !product) {
       showToast({
-        title: "Error",
         message: "You must be logged in to add products to cart.",
         type: "error",
       });
       return;
     }
+
     setIsAddingToCart(true);
 
     try {
@@ -114,9 +109,10 @@ export default function ProductDetailPage() {
       const cartSnap = await getDoc(cartRef);
 
       if (cartSnap.exists()) {
-        await updateDoc(cartRef, {
-          quantity: (cartSnap.data().quantity || 1) + quantity,
-          updatedAt: serverTimestamp(),
+        showToast({
+          title: "Info",
+          message: "This product is already in your cart.",
+          type: "info",
         });
       } else {
         await setDoc(cartRef, {
@@ -128,13 +124,13 @@ export default function ProductDetailPage() {
           quantity,
           addedAt: serverTimestamp(),
         });
-      }
 
-      showToast({
-        title: "Success",
-        message: "Added to cart!",
-        type: "success",
-      });
+        showToast({
+          title: "Success",
+          message: `Added ${quantity} item(s) to cart.`,
+          type: "success",
+        });
+      }
     } catch (err) {
       showToast({
         title: "Error",
