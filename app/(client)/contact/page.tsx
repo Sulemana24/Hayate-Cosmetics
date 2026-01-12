@@ -39,7 +39,6 @@ export default function ContactPage() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
     setTimeout(() => {
       setIsLoading(false);
       setIsSubmitted(true);
@@ -51,7 +50,6 @@ export default function ContactPage() {
         message: "",
       });
 
-      // Reset success message after 5 seconds
       setTimeout(() => setIsSubmitted(false), 5000);
     }, 1500);
   };
@@ -60,20 +58,20 @@ export default function ContactPage() {
     {
       icon: <FiPhone className="w-6 h-6" />,
       title: "Call Us",
-      details: ["+233 55 123 4567", "+233 20 987 6543"],
+      details: ["+233 53 384 2202", "+233 54 918 8561"],
       description: "Monday-Friday, 9AM-6PM",
     },
     {
       icon: <FiMail className="w-6 h-6" />,
       title: "Email Us",
-      details: ["support@hayatecosmetics.com", "wholesale@hayatecosmetics.com"],
+      details: ["yussifhayate10@icloud.com"],
       description: "Response within 24 hours",
     },
     {
       icon: <FiMapPin className="w-6 h-6" />,
       title: "Visit Us",
-      details: ["123 Beauty Street, Osu", "Accra, Ghana"],
-      description: "Flagship Store & HQ",
+      details: ["Tafo, 4 Miles", "Kumasi, Ghana"],
+      description: "Store location",
     },
     {
       icon: <FiClock className="w-6 h-6" />,
@@ -87,12 +85,12 @@ export default function ContactPage() {
     {
       question: "What is your shipping policy?",
       answer:
-        "We offer free shipping on orders over ₵100 within Ghana. International shipping available.",
+        "We deliver nationwide within Ghana and delivery fees vary based on location.",
     },
     {
       question: "How can I track my order?",
       answer:
-        "Tracking information is sent via email once your order ships. You can also check your account.",
+        "You can check your order status in the 'My Orders' section of your account.",
     },
     {
       question: "Do you offer international shipping?",
@@ -102,7 +100,7 @@ export default function ContactPage() {
     {
       question: "What is your return policy?",
       answer:
-        "We accept returns within 30 days for unopened products. See our Terms for details.",
+        "Currently, we do not accept returns or exchanges. Please contact support for assistance.",
     },
   ];
 
@@ -193,7 +191,7 @@ export default function ContactPage() {
                           onChange={handleChange}
                           required
                           className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#e39a89]/20 focus:border-[#e39a89] dark:focus:border-[#1b3c35] outline-none transition-all duration-200"
-                          placeholder="Your name"
+                          placeholder="Enter your full name"
                         />
                       </div>
                       <div>
@@ -207,7 +205,7 @@ export default function ContactPage() {
                           onChange={handleChange}
                           required
                           className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#e39a89]/20 focus:border-[#e39a89] dark:focus:border-[#1b3c35] outline-none transition-all duration-200"
-                          placeholder="your@email.com"
+                          placeholder="Enter your email address"
                         />
                       </div>
                     </div>
@@ -292,7 +290,7 @@ export default function ContactPage() {
               {/* Map */}
               <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-3xl shadow-lg p-8">
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-                  Visit Our Flagship Store
+                  Visit Our Store
                 </h3>
                 <div className="relative h-[300px] rounded-2xl overflow-hidden mb-6">
                   <div className="absolute inset-0 bg-gradient-to-br from-[#e39a89]/20 to-[#1b3c35]/20" />
@@ -308,12 +306,6 @@ export default function ContactPage() {
                 <div className="space-y-3">
                   <p className="text-gray-700 dark:text-gray-300">
                     <strong>Address:</strong> Tafo, Kumasi
-                  </p>
-                  <p className="text-gray-700 dark:text-gray-300">
-                    <strong>Parking:</strong> Free parking available
-                  </p>
-                  <p className="text-gray-700 dark:text-gray-300">
-                    <strong>Accessibility:</strong> Wheelchair accessible
                   </p>
                 </div>
               </div>
@@ -338,27 +330,6 @@ export default function ContactPage() {
                     </div>
                   ))}
                 </div>
-                <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                  <Link
-                    href="/faq"
-                    className="inline-flex items-center gap-2 text-[#e39a89] font-semibold hover:underline"
-                  >
-                    View all FAQs
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </Link>
-                </div>
               </div>
             </div>
           </div>
@@ -376,9 +347,14 @@ export default function ContactPage() {
             hours.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="px-8 py-3 bg-gradient-to-r from-[#e39a89] to-[#d87a6a] text-white font-semibold rounded-full hover:opacity-90 transition-opacity">
-              Start Live Chat
-            </button>
+            <a
+              href="https://wa.me/233XXXXXXXXX?text=Hello%20Hayate%20Cosmetics%20👋%0AI%20want%20to%20place%20an%20order"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-8 py-3 bg-[#d87a6a] text-white font-semibold rounded-full hover:opacity-90 transition-opacity"
+            >
+              Chat on WhatsApp
+            </a>
             <Link
               href="/consultation"
               className="px-8 py-3 border-2 border-[#e39a89] text-[#e39a89] font-semibold rounded-full hover:bg-[#e39a89] hover:text-white transition-colors"

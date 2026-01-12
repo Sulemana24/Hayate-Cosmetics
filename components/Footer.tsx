@@ -10,7 +10,6 @@ import {
 } from "react-icons/fi";
 import { FaTiktok, FaWhatsapp } from "react-icons/fa";
 
-// Logo import - update with your actual logo
 import Logo from "@/public/images/comlogo.png";
 
 export default function ClientFooter() {
@@ -18,10 +17,8 @@ export default function ClientFooter() {
 
   return (
     <footer className="bg-gradient-to-b from-[#0f2c26] to-[#1b3c35] text-white">
-      {/* Main Footer Content */}
       <div className="container mx-auto px-4 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
-          {/* Brand Column */}
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-6">
               <div className="relative w-14 h-14">
@@ -52,7 +49,7 @@ export default function ClientFooter() {
               </div>
               <div className="flex items-center gap-3">
                 <FiMail className="w-5 h-5 text-[#e39a89]" />
-                <span className="text-white/80">yussifhayate@icloud.com</span>
+                <span className="text-white/80">yussifhayate10@icloud.com</span>
               </div>
               <div className="flex items-start gap-3">
                 <FiMapPin className="w-5 h-5 text-[#e39a89] mt-1" />
@@ -214,9 +211,11 @@ export default function ClientFooter() {
             <div className="lg:text-right">
               <div className="flex flex-wrap gap-4 justify-center lg:justify-end">
                 <a
-                  href="#"
+                  href="https://wa.me/233XXXXXXXXX?text=Hello%20Hayate%20Cosmetics%20👋%0AI%20want%20to%20place%20an%20order"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="w-12 h-12 rounded-full bg-white/10 hover:bg-[#e39a89] flex items-center justify-center transition-all duration-300 group"
-                  aria-label="Instagram"
+                  aria-label="WhatsApp"
                 >
                   <FaWhatsapp className="w-5 h-5 group-hover:scale-110 transition-transform" />
                 </a>
@@ -248,6 +247,9 @@ export default function ClientFooter() {
             <div className="text-center md:text-left">
               <p className="text-white/60 text-sm">
                 © {currentYear} Hayate Cosmetics. All rights reserved.
+              </p>
+              <p className="text-white/60 text-sm">
+                Developed by Simdi Technologies
               </p>
             </div>
           </div>
