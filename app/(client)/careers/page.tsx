@@ -7,74 +7,23 @@ import {
   FiUsers,
   FiHeart,
   FiGlobe,
-  FiAward,
   FiClock,
   FiMapPin,
   FiDollarSign,
 } from "react-icons/fi";
 
-const jobOpenings = [
-  {
-    id: 1,
-    title: "Senior Product Developer",
-    department: "Research & Development",
-    location: "Accra, Ghana",
-    type: "Full-time",
-    experience: "5+ years",
-    description: "Lead formulation of new skincare products",
-    salary: "Competitive + Equity",
-  },
-  {
-    id: 2,
-    title: "Digital Marketing Manager",
-    department: "Marketing",
-    location: "Remote",
-    type: "Full-time",
-    experience: "3+ years",
-    description: "Drive digital growth and brand awareness",
-    salary: "$70k - $90k",
-  },
-  {
-    id: 3,
-    title: "Sustainability Coordinator",
-    department: "Operations",
-    location: "Accra, Ghana",
-    type: "Full-time",
-    experience: "2+ years",
-    description: "Oversee eco-friendly initiatives and partnerships",
-    salary: "Competitive",
-  },
-  {
-    id: 4,
-    title: "Customer Experience Specialist",
-    department: "Customer Service",
-    location: "Remote",
-    type: "Full-time",
-    experience: "1+ years",
-    description: "Provide exceptional support to our customers",
-    salary: "$40k - $55k",
-  },
-  {
-    id: 5,
-    title: "Graphic Designer",
-    department: "Creative",
-    location: "Hybrid",
-    type: "Contract",
-    experience: "2+ years",
-    description: "Create stunning visuals for our brand",
-    salary: "$50k - $65k",
-  },
-  {
-    id: 6,
-    title: "Supply Chain Analyst",
-    department: "Operations",
-    location: "Accra, Ghana",
-    type: "Full-time",
-    experience: "3+ years",
-    description: "Optimize our supply chain operations",
-    salary: "$60k - $75k",
-  },
-];
+type Job = {
+  id: number;
+  title: string;
+  department: string;
+  location: string;
+  type: string;
+  experience: string;
+  description: string;
+  salary: string;
+};
+
+const jobOpenings: Job[] = [];
 
 const benefits = [
   {
@@ -97,11 +46,7 @@ const benefits = [
     title: "Remote Options",
     desc: "Flexible work arrangements",
   },
-  {
-    icon: <FiAward />,
-    title: "Learning Budget",
-    desc: "$2,000 annual learning allowance",
-  },
+
   {
     icon: <FiClock />,
     title: "Flexible Hours",
@@ -133,7 +78,7 @@ export default function CareersPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-[#1b3c35] via-[#2a5a50] to-[#e39a89]/20 py-24 px-4">
+      <section className="relative bg-[#2a5a50] py-24 px-4">
         <div className="container mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
             Build the Future of <span className="text-[#e39a89]">Beauty</span>
@@ -184,7 +129,7 @@ export default function CareersPage() {
           </div>
 
           {/* Video/Image Section */}
-          <div className="relative h-[400px] rounded-3xl overflow-hidden mb-20">
+          {/* <div className="relative h-[400px] rounded-3xl overflow-hidden mb-20">
             <div className="absolute inset-0 bg-gradient-to-br from-[#e39a89]/30 to-[#1b3c35]/30" />
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center text-white">
@@ -195,7 +140,7 @@ export default function CareersPage() {
               </div>
             </div>
             <div className="absolute bottom-0 w-full h-1/2 bg-gradient-to-t from-black/30 to-transparent" />
-          </div>
+          </div> */}
         </div>
       </section>
 
@@ -211,7 +156,9 @@ export default function CareersPage() {
                 Open Positions
               </h2>
               <p className="text-gray-600 dark:text-gray-300">
-                {filteredJobs.length} positions available
+                {filteredJobs.length === 0
+                  ? "We are not hiring at the moment"
+                  : `${filteredJobs.length} positions available`}
               </p>
             </div>
 
@@ -302,11 +249,34 @@ export default function CareersPage() {
           </div>
 
           {filteredJobs.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-600 dark:text-gray-300">
-                No positions match your filters. Try different criteria or check
-                back later!
+            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-lg p-12 text-center max-w-2xl mx-auto mt-10">
+              <FiBriefcase className="w-16 h-16 text-[#e39a89] mx-auto mb-6" />
+
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                No Open Positions
+              </h3>
+
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                We are not hiring at the moment, but we are always open to
+                meeting talented people. Feel free to send us your resume and
+                we’ll reach out when roles open.
               </p>
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link
+                  href="mailto:yussifhayate10@icloud.com"
+                  className="bg-[#e39a89] text-white px-6 py-3 rounded-full font-semibold hover:opacity-90"
+                >
+                  Send Your Resume
+                </Link>
+
+                <Link
+                  href="/contact"
+                  className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white px-6 py-3 rounded-full font-semibold hover:opacity-90"
+                >
+                  Contact Us
+                </Link>
+              </div>
             </div>
           )}
         </div>
@@ -359,33 +329,6 @@ export default function CareersPage() {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 px-4 bg-gradient-to-r from-[#1b3c35] to-[#2a5a50] text-white">
-        <div className="container mx-auto text-center">
-          <h2 className="text-4xl font-bold mb-6">
-            Don&apos;t See Your Dream Role?
-          </h2>
-          <p className="text-xl text-gray-200 mb-8 max-w-2xl mx-auto">
-            We&apos;re always looking for talented individuals. Send us your
-            resume and tell us how you can contribute.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="mailto:careers@hayatecosmetics.com"
-              className="bg-[#e39a89] text-white px-8 py-3 rounded-full font-semibold hover:opacity-90 transition-opacity"
-            >
-              Send Your Resume
-            </Link>
-            <Link
-              href="/contact"
-              className="bg-white text-[#1b3c35] px-8 py-3 rounded-full font-semibold hover:opacity-90 transition-opacity"
-            >
-              Contact Hiring Team
-            </Link>
           </div>
         </div>
       </section>

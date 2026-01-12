@@ -49,7 +49,6 @@ export default function ClientNavbar() {
 
   const categories = ["Skincare", "Fragrance", "Accessories"];
 
-  // Scroll effect
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
@@ -59,7 +58,6 @@ export default function ClientNavbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isMenuOpen]);
 
-  // Click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -306,7 +304,7 @@ export default function ClientNavbar() {
             {/* Mobile Menu */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="lg:hidden p-2 text-gray-700 dark:text-gray-300 hover:text-[#e39a89] dark:hover:text-[#e39a89]"
+              className="lg:hidden p-2 text-gray-700 dark:text-gray-300 hover:text-[#e39a89] dark:hover:text-[hsl(11,62%,91%)] cursor-pointer"
               aria-label="Menu"
             >
               {isMenuOpen ? (
