@@ -36,7 +36,6 @@ export default function PaymentSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Initialize state from URL parameters or sessionStorage
   const [consultationData, setConsultationData] =
     useState<ConsultationData | null>(() => {
       const urlData: ConsultationData = {};

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/ToastProvider";
 import {
   FiCheckCircle,
   FiLock,
@@ -79,13 +80,12 @@ export default function ConsultationPaymentPage() {
   const [paystackLoaded, setPaystackLoaded] = useState(false);
   const scriptRef = useRef<HTMLScriptElement | null>(null);
   const hasInitializedRef = useRef(false);
+  const { showToast } = useToast();
 
-  // Paystack configuration
   const paystackPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "";
 
   const createTempConsultation = async (data: ConsultationData) => {
     try {
-      // Create temporary consultation record with pending status
       const consultationRef = await addDoc(collection(db, "consultations"), {
         ...data,
         userId: user?.uid || "guest",
@@ -97,20 +97,17 @@ export default function ConsultationPaymentPage() {
 
       setTempConsultationId(consultationRef.id);
 
-      // Update sessionStorage with consultation ID
       const updatedData = { ...data, tempId: consultationRef.id };
       sessionStorage.setItem(
         "pendingConsultation",
         JSON.stringify(updatedData)
       );
     } catch (error) {
-      console.error("Error creating temp consultation:", error);
       throw error;
     }
   };
 
   const loadPaystackScript = () => {
-    // Check if script is already loaded
     if (document.querySelector('script[src*="paystack"]')) {
       setPaystackLoaded(true);
       return;
@@ -125,7 +122,11 @@ export default function ConsultationPaymentPage() {
       }, 0);
     };
     script.onerror = () => {
-      console.error("Failed to load Paystack script");
+      showToast({
+        type: "error",
+        message: "Failed to load payment gateway. Please try again later.",
+      });
+
       setTimeout(() => {
         setPaystackLoaded(false);
       }, 0);
@@ -151,18 +152,19 @@ export default function ConsultationPaymentPage() {
       try {
         const data: ConsultationData = JSON.parse(storedData);
 
-        // Use setTimeout to defer state update
         setTimeout(() => {
           setConsultationData(data);
         }, 0);
 
-        // Create a temporary consultation record in Firebase
         await createTempConsultation(data);
 
-        // Load Paystack script
         loadPaystackScript();
       } catch (error) {
-        console.error("Error initializing payment:", error);
+        showToast({
+          type: "error",
+          message: "Error initializing payment. Please try again.",
+        });
+
         router.push("/consultation");
       }
     };
@@ -170,19 +172,19 @@ export default function ConsultationPaymentPage() {
     initializePayment();
 
     return () => {
-      // Clean up script on unmount
       if (scriptRef.current && document.head.contains(scriptRef.current)) {
         document.head.removeChild(scriptRef.current);
       }
     };
   }, [router]);
 
-  // Payment success callback
   const onPaymentSuccess = async (reference: PaystackResponse) => {
-    console.log("Payment successful:", reference);
+    showToast({
+      type: "success",
+      message: "Payment successful!",
+    });
 
     try {
-      // Update consultation record in Firebase
       if (tempConsultationId && consultationData) {
         const consultationRef = doc(db, "consultations", tempConsultationId);
 
@@ -226,23 +228,35 @@ export default function ConsultationPaymentPage() {
         router.push("/my-account?payment=success");
       }, 3000);
     } catch (error) {
-      console.error("Error updating payment status:", error);
+      showToast({
+        type: "error",
+        message: "Error updating payment status.",
+      });
+
       setTimeout(() => {
         setIsProcessing(false);
       }, 0);
-      alert(
-        "Payment recorded but there was an error updating your booking. Please contact support."
-      );
+      showToast({
+        type: "error",
+        message:
+          "There was an error updating your booking. Please contact support.",
+      });
     }
   };
 
-  // Payment failure callback
   const onPaymentFailed = (response: PaystackResponse) => {
-    console.error("Payment failed:", response);
+    showToast({
+      type: "error",
+      message: "Payment failed or was cancelled.",
+    });
+
     setTimeout(() => {
       setIsProcessing(false);
     }, 0);
-    alert(`Payment failed: ${response.message || "Please try again"}`);
+    showToast({
+      type: "error",
+      message: "Your payment was not completed. Please try again.",
+    });
   };
 
   const handlePayment = () => {
@@ -296,7 +310,11 @@ export default function ConsultationPaymentPage() {
         consultation_time: consultationData.selectedTime,
       },
       callback: (response: PaystackResponse) => {
-        console.log("Payment callback:", response);
+        showToast({
+          type: "success",
+          message: "Payment completed. Verifying...",
+        });
+
         if (response.status === "success") {
           onPaymentSuccess(response);
         } else {
@@ -304,23 +322,33 @@ export default function ConsultationPaymentPage() {
         }
       },
       onClose: () => {
-        console.log("Payment modal closed");
+        showToast({
+          type: "info",
+          message: "Payment window closed.",
+        });
+
         setTimeout(() => {
           setIsProcessing(false);
         }, 0);
       },
     };
 
-    // Initialize Paystack payment
     try {
       const handler = window.PaystackPop.setup(paystackConfig);
       handler.openIframe();
     } catch (error) {
-      console.error("Error opening Paystack:", error);
+      showToast({
+        type: "error",
+        message: "Error initiating payment. Please try again.",
+      });
+
       setTimeout(() => {
         setIsProcessing(false);
       }, 0);
-      alert("Error initiating payment. Please try again.");
+      showToast({
+        type: "error",
+        message: "There was an error initiating the payment. Please try again.",
+      });
     }
   };
 

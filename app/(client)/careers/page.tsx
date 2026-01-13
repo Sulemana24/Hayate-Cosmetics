@@ -31,11 +31,7 @@ const benefits = [
     title: "Growth Opportunities",
     desc: "Clear career progression paths",
   },
-  {
-    icon: <FiHeart />,
-    title: "Health & Wellness",
-    desc: "Comprehensive medical coverage",
-  },
+
   {
     icon: <FiUsers />,
     title: "Team Culture",
