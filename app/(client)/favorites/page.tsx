@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getAuth } from "firebase/auth";
+import { useToast } from "@/components/ToastProvider";
 import { db } from "@/lib/firebase";
 import {
   collection,
@@ -11,8 +12,6 @@ import {
   addDoc,
   query,
   where,
-  getDoc,
-  documentId,
   Timestamp,
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
@@ -24,7 +23,6 @@ import {
   FiArrowLeft,
   FiSearch,
   FiX,
-  FiStar,
   FiClock,
   FiEye,
   FiChevronRight,
@@ -42,7 +40,8 @@ interface Product {
   discountedPrice: number;
   imageUrl?: string;
   category: string;
-  quantity: number;
+  quantity: number | null;
+
   status: "In Stock" | "Low Stock" | "Out of Stock";
   addedAt: Timestamp | Date;
 }
@@ -71,6 +70,8 @@ export default function Favorites() {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState<string>("recent");
+  const { showToast } = useToast();
+  const [cartProductIds, setCartProductIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -83,6 +84,31 @@ export default function Favorites() {
 
     return () => unsubscribe();
   }, [router]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const fetchCart = async () => {
+      try {
+        const cartRef = collection(db, "users", currentUserId, "cart");
+        const snap = await getDocs(cartRef);
+
+        const ids = new Set<string>();
+        snap.forEach((doc) => {
+          ids.add(doc.data().productId);
+        });
+
+        setCartProductIds(ids);
+      } catch (err) {
+        showToast({
+          type: "error",
+          message: "Failed to load cart items.",
+        });
+      }
+    };
+
+    fetchCart();
+  }, [currentUserId]);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -134,10 +160,15 @@ export default function Favorites() {
         const favoritesList: Product[] = favoriteDocs.map((fav) => {
           const productData = productsData[fav.productId];
 
-          const quantity = productData?.quantity ?? 0;
+          const quantity =
+            typeof productData?.quantity === "number"
+              ? productData.quantity
+              : null;
 
           const status: Product["status"] =
-            quantity === 0
+            quantity === null
+              ? "Out of Stock"
+              : quantity === 0
               ? "Out of Stock"
               : quantity <= 5
               ? "Low Stock"
@@ -159,7 +190,10 @@ export default function Favorites() {
 
         setFavorites(sortProducts(favoritesList, sortBy));
       } catch (error) {
-        console.error("Error fetching favorites:", error);
+        showToast({
+          type: "error",
+          message: "Failed to load favorites. Please try again.",
+        });
       } finally {
         setLoading(false);
       }
@@ -197,7 +231,10 @@ export default function Favorites() {
       setFavorites(favorites.filter((item) => item.id !== productId));
       setSelectedItems(selectedItems.filter((id) => id !== productId));
     } catch (error) {
-      console.error("Error removing from favorites:", error);
+      showToast({
+        type: "error",
+        message: "Failed to remove from favorites. Please try again.",
+      });
     } finally {
       setRemovingId(null);
     }
@@ -242,23 +279,37 @@ export default function Favorites() {
       return;
     }
 
+    if (cartProductIds.has(product.id)) {
+      showToast({
+        type: "info",
+        message: `${product.name} is already in your cart`,
+      });
+      return;
+    }
+
     try {
       const cartRef = collection(db, "users", currentUserId, "cart");
+
       await addDoc(cartRef, {
         productId: product.id,
         name: product.name,
         price: product.discountedPrice,
-
         imageUrl: product.imageUrl,
         quantity: 1,
         addedAt: Timestamp.now(),
       });
 
-      await removeFromFavorites(product.id);
+      setCartProductIds(new Set([...cartProductIds, product.id]));
 
-      router.push("/cart");
+      showToast({
+        type: "success",
+        message: `${product.name} added to cart`,
+      });
     } catch (error) {
-      console.error("Error moving to cart:", error);
+      showToast({
+        type: "error",
+        message: "Failed to add to cart. Try again.",
+      });
     }
   };
 
@@ -295,7 +346,6 @@ export default function Favorites() {
     }
   };
 
-  // Filter and search favorites
   const filteredFavorites = favorites.filter((product) => {
     const matchesSearch =
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -313,18 +363,6 @@ export default function Favorites() {
 
     return matchesSearch;
   });
-
-  // Calculate total value
-  const totalValue = filteredFavorites.reduce(
-    (sum, item) => sum + item.discountedPrice,
-    0
-  );
-  const totalSavings = filteredFavorites.reduce((sum, item) => {
-    if (item.originalPrice && item.originalPrice > item.discountedPrice) {
-      return sum + (item.originalPrice - item.discountedPrice);
-    }
-    return sum;
-  }, 0);
 
   if (loading) {
     return (
@@ -463,7 +501,6 @@ export default function Favorites() {
             </div>
           </div>
 
-          {/* Bulk Actions */}
           {selectedItems.length > 0 && (
             <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-4">
@@ -496,7 +533,6 @@ export default function Favorites() {
           )}
         </div>
 
-        {/* Favorites Content */}
         {filteredFavorites.length === 0 ? (
           <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="max-w-md mx-auto">
@@ -533,7 +569,6 @@ export default function Favorites() {
           </div>
         ) : (
           <>
-            {/* Products Grid/List */}
             <div
               className={`${
                 viewMode === "grid"
@@ -541,192 +576,171 @@ export default function Favorites() {
                   : "space-y-4"
               }`}
             >
-              {filteredFavorites.map((product) => (
-                <div
-                  key={product.id}
-                  className={`group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300 ${
-                    viewMode === "list" ? "flex" : ""
-                  }`}
-                >
-                  {/* Select Checkbox */}
-                  <div className="absolute top-4 left-4 z-10">
-                    <input
-                      type="checkbox"
-                      checked={selectedItems.includes(product.id)}
-                      onChange={() => toggleSelectItem(product.id)}
-                      className="w-5 h-5 text-[#e39a89] rounded focus:ring-[#e39a89] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
-                    />
-                  </div>
+              {filteredFavorites.map((product) => {
+                const isInCart = cartProductIds.has(product.id);
 
-                  {/* Image Container */}
+                return (
                   <div
-                    className={`relative overflow-hidden ${
-                      viewMode === "list" ? "w-1/3 md:w-1/4" : "w-full h-64"
+                    key={product.id}
+                    className={`group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300 ${
+                      viewMode === "list" ? "flex" : ""
                     }`}
                   >
-                    <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
-                      <button
-                        onClick={() => removeFromFavorites(product.id)}
-                        disabled={removingId === product.id}
-                        className="p-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg hover:bg-white dark:hover:bg-gray-700 transition-colors shadow-lg"
-                      >
-                        <FiTrash2
-                          className={`w-4 h-4 text-red-500 ${
-                            removingId === product.id ? "animate-pulse" : ""
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    <div className="relative w-full h-full">
-                      <Image
-                        src={product.imageUrl || "/placeholder-product.jpg"}
-                        alt={product.name}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        sizes={
-                          viewMode === "list"
-                            ? "33vw"
-                            : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                        }
+                    <div className="absolute top-4 left-4 z-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.includes(product.id)}
+                        onChange={() => toggleSelectItem(product.id)}
+                        className="w-5 h-5 text-[#e39a89] rounded focus:ring-[#e39a89] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
                       />
+                    </div>
 
-                      <div className="absolute top-4 left-4 bg-[#e39a89] text-white px-3 py-1 rounded-full text-xs font-bold">
-                        SALE
+                    <div
+                      className={`relative overflow-hidden ${
+                        viewMode === "list" ? "w-1/3 md:w-1/4" : "w-full h-64"
+                      }`}
+                    >
+                      <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+                        <button
+                          onClick={() => removeFromFavorites(product.id)}
+                          disabled={removingId === product.id}
+                          className="p-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg hover:bg-white dark:hover:bg-gray-700 transition-colors shadow-lg cursor-pointer"
+                        >
+                          <FiTrash2
+                            className={`w-4 h-4 text-red-500 ${
+                              removingId === product.id ? "animate-pulse" : ""
+                            }`}
+                          />
+                        </button>
                       </div>
 
-                      {/* {product.status !== "Out of Stock" && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                          <span className="text-white font-bold bg-black/70 px-4 py-2 rounded-lg">
-                            Out of Stock
-                          </span>
-                        </div>
-                      )} */}
-                    </div>
-                  </div>
+                      <div className="relative w-full h-full">
+                        <Image
+                          src={product.imageUrl || "/placeholder-product.jpg"}
+                          alt={product.name}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          sizes={
+                            viewMode === "list"
+                              ? "33vw"
+                              : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                          }
+                        />
 
-                  {/* Product Info */}
-                  <div
-                    className={`p-5 ${
-                      viewMode === "list" ? "w-2/3 md:w-3/4" : ""
-                    }`}
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h3 className="font-bold text-gray-900 dark:text-white group-hover:text-[#e39a89] dark:group-hover:text-[#e39a89] transition-colors line-clamp-2">
-                          {product.name}
-                        </h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          {product.category && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-                              {product.category}
+                        <div className="absolute top-4 left-4 bg-[#e39a89] text-white px-3 py-1 rounded-full text-xs font-bold">
+                          SALE
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      className={`p-5 ${
+                        viewMode === "list" ? "w-2/3 md:w-3/4" : ""
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="font-bold text-gray-900 dark:text-white group-hover:text-[#e39a89] dark:group-hover:text-[#e39a89] transition-colors line-clamp-2">
+                            {product.name}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            {product.category && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                                {product.category}
+                              </span>
+                            )}
+                            <span className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
+                              <FiClock className="w-3 h-3" />
+                              {formatAddedDate(product.addedAt)}
                             </span>
-                          )}
-                          <span className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
-                            <FiClock className="w-3 h-3" />
-                            {formatAddedDate(product.addedAt)}
-                          </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {viewMode === "list" && product.description && (
-                      <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">
-                        {product.description}
-                      </p>
-                    )}
+                      {viewMode === "list" && product.description && (
+                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">
+                          {product.description}
+                        </p>
+                      )}
 
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl font-bold text-gray-900 dark:text-white">
-                          ₵{product.discountedPrice.toFixed(2)}
-                        </span>
-                        {product.originalPrice &&
-                          product.originalPrice > product.discountedPrice && (
-                            <>
-                              <span className="text-sm text-gray-500 dark:text-gray-400 line-through">
-                                ₵{product.originalPrice.toFixed(2)}
-                              </span>
-                              <span className="text-xs font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded">
-                                Save ₵
-                                {(
-                                  product.originalPrice -
-                                  product.discountedPrice
-                                ).toFixed(2)}
-                              </span>
-                            </>
-                          )}
-                      </div>
-                      {product.quantity !== undefined && (
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl font-bold text-gray-900 dark:text-white">
+                            ₵{product.discountedPrice.toFixed(2)}
+                          </span>
+                          {product.originalPrice &&
+                            product.originalPrice > product.discountedPrice && (
+                              <>
+                                <span className="text-sm text-gray-500 dark:text-gray-400 line-through">
+                                  ₵{product.originalPrice.toFixed(2)}
+                                </span>
+                                <span className="text-xs font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded">
+                                  Save ₵
+                                  {(
+                                    product.originalPrice -
+                                    product.discountedPrice
+                                  ).toFixed(2)}
+                                </span>
+                              </>
+                            )}
+                        </div>
                         <div className="flex items-center gap-1 text-sm">
                           <FiPackage className="w-4 h-4 text-gray-400" />
                           <span
                             className={`font-medium ${
-                              product.quantity > 10
+                              product.quantity === null
+                                ? "text-gray-500"
+                                : product.quantity > 10
                                 ? "text-green-600 dark:text-green-400"
                                 : product.quantity > 0
                                 ? "text-yellow-600 dark:text-yellow-400"
                                 : "text-red-600 dark:text-red-400"
                             }`}
                           >
-                            {product.quantity > 10
+                            {product.quantity === null
+                              ? "Unavailable"
+                              : product.quantity > 10
                               ? "In Stock"
                               : product.quantity > 0
                               ? `${product.quantity} left`
                               : "Out of Stock"}
                           </span>
                         </div>
-                      )}
-                    </div>
+                      </div>
 
-                    {/*  <div className="flex flex-wrap gap-2 mb-4">
-                      {product.colors?.slice(0, 3).map((color, index) => (
-                        <div
-                          key={index}
-                          className="w-6 h-6 rounded-full border border-gray-300 dark:border-gray-600"
-                          style={{ backgroundColor: color }}
-                          title={color}
-                        />
-                      ))}
-                      {product.sizes?.slice(0, 3).map((size, index) => (
-                        <span
-                          key={index}
-                          className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded"
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => moveToCart(product)}
+                          disabled={
+                            product.status === "Out of Stock" ||
+                            isInCart ||
+                            removingId === product.id
+                          }
+                          className={`flex-1 min-w-[120px] px-4 py-3 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                            product.status === "Out of Stock" || isInCart
+                              ? "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                              : "bg-[#e39a89] text-white hover:opacity-90"
+                          }`}
                         >
-                          {size}
-                        </span>
-                      ))}
-                    </div> */}
-
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => moveToCart(product)}
-                        disabled={
-                          product.status !== "Out of Stock" ||
-                          removingId === product.id
-                        }
-                        className={`flex-1 min-w-[120px] px-4 py-3 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 ${
-                          product.status !== "Out of Stock"
-                            ? "bg-[#e39a89] text-white hover:opacity-90"
-                            : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-                        }`}
-                      >
-                        <FiShoppingCart className="w-4 h-4" />
-                        {product.status !== "Out of Stock"
-                          ? "Add to Cart"
-                          : "Out of Stock"}
-                      </button>
-                      <button
-                        onClick={() => router.push(`/product/${product.id}`)}
-                        className="px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl font-medium text-sm transition-colors flex items-center gap-2"
-                      >
-                        <FiEye className="w-4 h-4" />
-                        View
-                      </button>
+                          <FiShoppingCart className="w-4 h-4" />
+                          {product.status === "Out of Stock"
+                            ? "Out of Stock"
+                            : isInCart
+                            ? "In Cart"
+                            : "Add to Cart"}
+                        </button>
+                        <button
+                          onClick={() => router.push(`/product/${product.id}`)}
+                          className="px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl font-medium text-sm transition-colors flex items-center gap-2 cursor-pointer"
+                        >
+                          <FiEye className="w-4 h-4" />
+                          View
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Pagination or Load More */}

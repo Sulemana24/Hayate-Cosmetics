@@ -5,6 +5,7 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
 import Image from "next/image";
 import Link from "next/link";
+import { useToast } from "@/components/ToastProvider";
 import {
   FiArrowLeft,
   FiFilter,
@@ -36,41 +37,36 @@ export default function BestSellersPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [categories, setCategories] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>("popular");
+  const { showToast } = useToast();
 
-  // Fetch products
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
         const productsRef = collection(db, "products");
 
-        // First get all products
         const snapshot = await getDocs(productsRef);
         const productsData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         })) as Product[];
 
-        // Extract unique categories
         const uniqueCategories = Array.from(
           new Set(productsData.map((p) => p.category))
         );
         setCategories(["all", ...uniqueCategories]);
 
-        // Filter best sellers (products with rating >= 4 or salesCount > 0)
         let bestSellers = productsData.filter(
           (p) =>
             (p.rating && p.rating >= 4) || (p.salesCount && p.salesCount > 0)
         );
 
-        // If no obvious best sellers, take top 20 products by rating or price
         if (bestSellers.length === 0) {
           bestSellers = productsData
             .sort((a, b) => (b.rating || 0) - (a.rating || 0))
             .slice(0, 20);
         }
 
-        // Apply sorting
         if (sortBy === "price-low") {
           bestSellers.sort((a, b) => a.discountedPrice - b.discountedPrice);
         } else if (sortBy === "price-high") {
@@ -81,7 +77,6 @@ export default function BestSellersPage() {
           bestSellers.sort((a, b) => (b.salesCount || 0) - (a.salesCount || 0));
         }
 
-        // Apply category filter
         if (selectedCategory !== "all") {
           bestSellers = bestSellers.filter(
             (p) => p.category === selectedCategory
@@ -90,7 +85,11 @@ export default function BestSellersPage() {
 
         setProducts(bestSellers);
       } catch (error) {
-        console.error("Error fetching best sellers:", error);
+        showToast({
+          title: "Error",
+          message: "Failed to load best sellers. Please try again later.",
+          type: "error",
+        });
       } finally {
         setLoading(false);
       }
@@ -235,7 +234,6 @@ export default function BestSellersPage() {
           </div>
         </div>
 
-        {/* Products Grid/List */}
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[...Array(8)].map((_, i) => (
@@ -281,7 +279,6 @@ export default function BestSellersPage() {
                     }
                   />
 
-                  {/* Top Seller Badge */}
                   {index < 3 && (
                     <div className="absolute top-2 left-2 bg-gradient-to-r from-yellow-500 to-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
                       <FiAward className="w-3 h-3" /> #{index + 1} Best Seller

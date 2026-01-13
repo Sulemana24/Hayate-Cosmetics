@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Background from "@/public/images/alexandra-tran-jNPVlv8USYA-unsplash.jpg";
 import { db } from "@/lib/firebase";
+import { useToast } from "@/components/ToastProvider";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import {
   FiCalendar,
@@ -119,16 +120,16 @@ export default function ConsultationsPage() {
     consultationType: "virtual",
     notes: "",
   });
-  const [isProcessing, setIsProcessing] = useState(false);
+
   const [isPaying, setIsPaying] = useState(false);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paystackLoaded, setPaystackLoaded] = useState(false);
   const scriptRef = useRef<HTMLScriptElement | null>(null);
+  const { showToast } = useToast();
 
   const paystackPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "";
 
-  // Load Paystack script
   useEffect(() => {
     const loadPaystackScript = () => {
       if (document.querySelector('script[src*="paystack"]')) {
@@ -143,7 +144,11 @@ export default function ConsultationsPage() {
         setTimeout(() => setPaystackLoaded(true), 0);
       };
       script.onerror = () => {
-        console.error("Failed to load Paystack script");
+        showToast({
+          type: "error",
+          message: "Failed to load payment gateway. Please try again later.",
+        });
+
         setTimeout(() => setPaystackLoaded(false), 0);
       };
 
@@ -230,18 +235,17 @@ export default function ConsultationsPage() {
         status: "booked",
       });
 
-      // Mark payment as successful
       setPaymentSuccess(true);
 
-      // Optional: redirect after a few seconds
       setTimeout(() => {
         router.push("/profile");
       }, 3000);
     } catch (error) {
-      console.error("Error saving booking:", error);
-      alert(
-        "Payment was successful, but saving the booking failed. Contact support."
-      );
+      showToast({
+        type: "error",
+        message:
+          "Payment was successful, but saving the booking failed. Contact support.",
+      });
     }
   };
 
@@ -251,12 +255,20 @@ export default function ConsultationsPage() {
     }
 
     if (!paystackLoaded) {
-      alert("Payment gateway is loading. Please wait a moment.");
+      showToast({
+        type: "info",
+        message: "Payment gateway is loading. Please wait a moment.",
+      });
+
       return;
     }
 
     if (!paystackPublicKey) {
-      alert("Payment configuration error. Please contact support.");
+      showToast({
+        type: "error",
+        message: "Payment configuration error. Please contact support.",
+      });
+
       return;
     }
 
@@ -268,7 +280,6 @@ export default function ConsultationsPage() {
         .substring(2, 11)}`;
     };
 
-    // Generate unique reference
     const reference = generateReference();
 
     const selectedPlanDetails = getSelectedPlanDetails();
@@ -277,7 +288,6 @@ export default function ConsultationsPage() {
       return;
     }
 
-    // Paystack configuration
     const paystackConfig: PaystackOptions = {
       key: paystackPublicKey,
       email: formData.email,
@@ -294,30 +304,41 @@ export default function ConsultationsPage() {
       },
       callback: (response: PaystackResponse) => {
         if (response.status === "success") {
-          console.log("Payment successful:", response);
+          showToast({
+            type: "success",
+            message: "Payment successful! Verifying your booking...",
+          });
+
           handlePaymentSuccess(response);
         } else {
-          console.error("Payment failed:", response);
-          setIsPaying(false);
-          alert(`Payment failed: ${response.message || "Please try again"}`);
+          showToast({
+            type: "error",
+            message: "Payment was not completed. Please try again.",
+          });
         }
       },
       onClose: () => {
-        console.log("Payment modal closed");
+        showToast({
+          type: "info",
+          message: "Payment window closed.",
+        });
+
         setTimeout(() => {
           setIsPaying(false);
         }, 0);
       },
     };
 
-    // Initialize Paystack payment
     try {
       const handler = window.PaystackPop.setup(paystackConfig);
       handler.openIframe();
     } catch (error) {
-      console.error("Error opening Paystack:", error);
+      showToast({
+        type: "error",
+        message: "Error initiating payment. Please try again.",
+      });
+
       setIsPaying(false);
-      alert("Error initiating payment. Please try again.");
     }
   };
 

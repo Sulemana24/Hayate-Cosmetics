@@ -111,7 +111,7 @@ export default function Cart() {
         const itemRef = doc(db, "users", currentUserId, "cart", item.id);
         showToast({
           title: "Item Removed",
-          message: `${item.name} has been removed from your cart.`,
+          message: `${item.name} removed from your cart.`,
           type: "info",
         });
         await deleteDoc(itemRef);

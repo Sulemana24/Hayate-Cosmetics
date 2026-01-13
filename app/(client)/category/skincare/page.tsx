@@ -29,7 +29,6 @@ async function getSkincareProducts() {
 
     return products;
   } catch (error) {
-    console.error("Error fetching skincare products:", error);
     return [];
   }
 }
