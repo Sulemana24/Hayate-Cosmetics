@@ -4,29 +4,41 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { FiMail, FiArrowLeft, FiCheckCircle } from "react-icons/fi";
+import { useToast } from "@/components/ToastProvider";
 
 export default function ForgotPasswordPage() {
-  const { resetPassword, loading } = useAuth();
+  const { resetPassword } = useAuth();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { showToast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
     try {
       await resetPassword(email);
+      showToast({
+        type: "success",
+        message: "Password reset email sent successfully.",
+      });
       setSuccess(true);
     } catch (error: unknown) {
-      setError((error as Error).message || "Failed to send reset email");
+      showToast({
+        type: "error",
+        message: (error as Error).message || "Failed to send reset email.",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Back to login */}
         <Link
           href="/login"
           className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white mb-8"
@@ -57,7 +69,8 @@ export default function ForgotPasswordPage() {
                 Check Your Email
               </h3>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
-                We&apos;ve sent password reset instructions to {email}
+                We&apos;ve sent password reset instructions to {email}. Please
+                check your spam folder if you don&apos;t see the email.
               </p>
               <Link
                 href="/login"

@@ -183,7 +183,7 @@ export default function ClientNavbar() {
                   href={link.href}
                   className={`font-medium transition-colors duration-200 ${
                     isActive
-                      ? "text-[#e39a89] dark:text-[#e39a89]"
+                      ? "text-[#0f2c26] "
                       : "text-gray-700 dark:text-gray-300 hover:text-[#0f2c26] dark:hover:text-[#0f2c26]"
                   }`}
                 >
@@ -317,14 +317,19 @@ export default function ClientNavbar() {
         </div>
 
         {/* Mobile Menu Panel */}
+        {/* Mobile Menu Panel */}
         {isMenuOpen && (
           <div
-            ref={mobileMenuRef}
-            className="fixed inset-0 z-90 bg-black/50 lg:hidden"
+            className="fixed inset-0 z-50 flex"
             onClick={() => setIsMenuOpen(false)}
           >
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/50" />
+
+            {/* Side panel */}
             <div
-              className="fixed right-0 top-0 h-full w-80 bg-white dark:bg-gray-900 shadow-2xl p-6 overflow-y-auto"
+              ref={mobileMenuRef}
+              className="relative ml-auto h-full w-80 bg-white dark:bg-gray-900 shadow-2xl p-6 overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Nav Links */}

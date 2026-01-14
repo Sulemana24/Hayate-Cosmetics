@@ -53,7 +53,6 @@ export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // Fetch New Arrivals
   useEffect(() => {
     const fetchNewArrivals = async () => {
       try {
