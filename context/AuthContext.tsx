@@ -74,7 +74,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setLoading(false);
 
       if (firebaseUser) {
-        // Real-time cart listener
         const cartRef = collection(db, "users", firebaseUser.uid, "cart");
         unsubscribeCart = onSnapshot(cartRef, (snapshot) => {
           const total = snapshot.docs.reduce(
@@ -84,7 +83,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setCartItemsCount(total);
         });
 
-        // Real-time favorites listener
         const favRef = collection(db, "users", firebaseUser.uid, "favorites");
         unsubscribeFav = onSnapshot(favRef, (snapshot) => {
           const favs = snapshot.docs.map((docSnap) => ({
@@ -127,7 +125,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
           addedAt: serverTimestamp(),
         });
       }
-      // The onSnapshot listener will automatically update `favorites` and `favoritesCount`
     } catch (err) {
       console.error("Failed to toggle favorite:", err);
     }

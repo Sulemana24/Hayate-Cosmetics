@@ -212,7 +212,7 @@ function FAQSection() {
       id: 1,
       question: "How long does delivery take in Ghana?",
       answer:
-        "We offer nationwide delivery within 2-5 business days for major cities (Accra, Kumasi, Tamale, Takoradi) and 5-7 days for other regions.",
+        "We offer nationwide delivery across Ghana. Standard delivery typically takes 2-5 business days, depending on your location. And same-day delivery is available in Kumasi for orders placed before 12 PM.",
     },
     {
       id: 2,
@@ -224,7 +224,7 @@ function FAQSection() {
       id: 3,
       question: "What payment methods do you accept?",
       answer:
-        "We accept multiple payment methods: Mobile Money  and Cash on Delivery (available in Kumasi). All transactions are secure and encrypted.",
+        "We accept various payment methods including mobile money (MTN Mobile Money, Vodafone Cash), credit/debit cards (Visa, MasterCard), and bank transfers. We also accept cash in-person for store pickups.",
     },
     {
       id: 4,
@@ -242,7 +242,7 @@ function FAQSection() {
       id: 6,
       question: "Do you offer international shipping?",
       answer:
-        "Currently, we only ship within Ghana. However, we're working on expanding our services to other West African countries soon. Subscribe to our newsletter for updates on international shipping.",
+        "Yes, we offer international shipping to selected countries. Shipping fees and delivery times vary based on the destination. Please contact our support team for more details on international orders.",
     },
   ];
 

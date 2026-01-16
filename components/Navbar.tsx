@@ -29,10 +29,12 @@ export default function ClientNavbar() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("theme") === "dark";
-    }
-    return false;
+    if (typeof window === "undefined") return false;
+
+    const storedTheme = localStorage.getItem("theme");
+    if (storedTheme) return storedTheme === "dark";
+
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
 
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -59,6 +61,10 @@ export default function ClientNavbar() {
   }, [isMenuOpen]);
 
   useEffect(() => {
+    document.documentElement.classList.toggle("dark", darkMode);
+  }, [darkMode]);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         userMenuRef.current &&
@@ -81,14 +87,6 @@ export default function ClientNavbar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
 
   const toggleDarkMode = () => {
     setDarkMode((prev) => {
@@ -114,14 +112,14 @@ export default function ClientNavbar() {
   return (
     <>
       <header
-        className={`sticky top-0 z-50 w-full transition-all duration-300 ${
+        className="bg-[#d87a6a]"
+        /* className={`sticky top-0 z-50 w-full transition-all duration-300 ${
           isScrolled
-            ? "bg-white/95 dark:bg-gradient-to-r from-[#e39a89] to-[#d87a6a] backdrop-blur-md shadow-lg"
+            ? "bg-white/95 dark:bg-gradient[#d87a6a] backdrop-blur-md shadow-lg"
             : "bg-white dark:bg-gradient-to-r from-[#e39a89] to-[#d87a6a] "
-        }`}
+        }`} */
       >
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
             <div className="relative w-12 h-12">
               <Image
@@ -155,7 +153,7 @@ export default function ClientNavbar() {
                   >
                     <button
                       onClick={() => setIsCategoriesOpen(!isCategoriesOpen)}
-                      className="flex items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-[#0f2c26] dark:hover:text-[#0f2c26] font-medium transition-colors duration-200 cursor-pointer"
+                      className="flex items-center gap-1 text-white hover:text-[#0f2c26] dark:hover:text-[#0f2c26] font-medium transition-colors duration-200 cursor-pointer"
                     >
                       {link.name}
                       <FiChevronDown className="w-4 h-4" />
@@ -183,8 +181,8 @@ export default function ClientNavbar() {
                   href={link.href}
                   className={`font-medium transition-colors duration-200 ${
                     isActive
-                      ? "text-[#e39a89] dark:text-[#e39a89]"
-                      : "text-gray-700 dark:text-gray-300 hover:text-[#0f2c26] dark:hover:text-[#0f2c26]"
+                      ? "text-[#0f2c26] "
+                      : "text-white hover:text-[#0f2c26] dark:hover:text-[#0f2c26]"
                   }`}
                 >
                   {link.name}
@@ -193,12 +191,11 @@ export default function ClientNavbar() {
             })}
           </nav>
 
-          {/* Right Icons */}
           <div className="flex items-center gap-4 md:gap-6">
             {isLoggedIn && (
               <Link
                 href="/favorites"
-                className="hidden md:block relative p-2 text-gray-700 dark:text-gray-300 hover:text-[#0f2c26] dark:hover:text-[#0f2c26]"
+                className="hidden md:block relative p-2 text-white hover:text-[#0f2c26] dark:hover:text-[#0f2c26]"
               >
                 <FiHeart className="w-5 h-5" />
                 {favoritesCount > 0 && (
@@ -213,7 +210,7 @@ export default function ClientNavbar() {
             {isLoggedIn && (
               <Link
                 href="/cart"
-                className="hidden md:block relative p-2 text-gray-700 dark:text-gray-300 hover:text-[#0f2c26] dark:hover:text-[#0f2c26]"
+                className="hidden md:block relative p-2 text-white hover:text-[#0f2c26] dark:hover:text-[#0f2c26]"
               >
                 <FiShoppingCart className="w-5 h-5" />
                 {cartItemsCount > 0 && (
@@ -228,7 +225,7 @@ export default function ClientNavbar() {
             <div className="relative hidden md:block" ref={userMenuRef}>
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="p-2 text-gray-700 dark:text-gray-300 hover:text-[#0f2c26] dark:hover:text-[#0f2c26] transition-colors duration-200 flex items-center gap-2"
+                className="p-2 text-white hover:text-[#0f2c26] dark:hover:text-[#0f2c26] transition-colors duration-200 flex items-center gap-2"
               >
                 <FiUser className="w-5 h-5" />
                 <FiChevronDown className="w-4 h-4" />
@@ -288,7 +285,7 @@ export default function ClientNavbar() {
 
             <button
               onClick={toggleDarkMode}
-              className="hidden md:flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 px-4 py-3 rounded-xl"
+              className="hidden md:flex items-center gap-2 text-white hover:bg-gray-50 dark:hover:bg-gray-800 px-4 py-3 rounded-xl"
             >
               {darkMode ? (
                 <>
@@ -304,7 +301,7 @@ export default function ClientNavbar() {
             {/* Mobile Menu */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="lg:hidden p-2 text-gray-700 dark:text-gray-300 hover:text-[#e39a89] dark:hover:text-[hsl(11,62%,91%)] cursor-pointer"
+              className="lg:hidden p-2 text-white hover:text-[#e39a89] dark:hover:text-[hsl(11,62%,91%)] cursor-pointer"
               aria-label="Menu"
             >
               {isMenuOpen ? (
@@ -316,18 +313,18 @@ export default function ClientNavbar() {
           </div>
         </div>
 
-        {/* Mobile Menu Panel */}
         {isMenuOpen && (
           <div
-            ref={mobileMenuRef}
-            className="fixed inset-0 z-90 bg-black/50 lg:hidden"
+            className="fixed inset-0 z-50 flex"
             onClick={() => setIsMenuOpen(false)}
           >
+            <div className="absolute inset-0 bg-black/50" />
+
             <div
-              className="fixed right-0 top-0 h-full w-80 bg-white dark:bg-gray-900 shadow-2xl p-6 overflow-y-auto"
+              ref={mobileMenuRef}
+              className="relative ml-auto h-full w-80 bg-white dark:bg-gray-900 shadow-2xl p-6 overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Nav Links */}
               <nav className="flex flex-col gap-2 mb-6">
                 {navLinks.map((link) => (
                   <Link
@@ -392,7 +389,6 @@ export default function ClientNavbar() {
                 )}
               </div>
 
-              {/* Cart + Favorites + Dark Mode */}
               <div className="flex flex-col gap-3 border-t border-gray-100 dark:border-gray-800 pt-4">
                 {isLoggedIn && (
                   <>
