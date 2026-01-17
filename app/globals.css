@@ -5,6 +5,12 @@
   --foreground: #171717;
 }
 
+* {
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
 html {
   scroll-behavior: smooth;
 }

@@ -45,13 +45,11 @@ export default function ProductCard({
   });
   const [currentUserId, setCurrentUserId] = useState<string | null>(userId);
 
-  // Detect logged-in user
   useEffect(() => {
     const auth = getAuth();
     if (auth.currentUser) setCurrentUserId(auth.currentUser.uid);
   }, []);
 
-  // Detect mobile
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
@@ -59,7 +57,6 @@ export default function ProductCard({
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Fetch favorite status
   useEffect(() => {
     if (!currentUserId) return;
     const fetchFavoriteStatus = async () => {
@@ -69,7 +66,7 @@ export default function ProductCard({
           "users",
           currentUserId,
           "favorites",
-          product.id
+          product.id,
         );
         const favoriteSnap = await getDoc(favoriteRef);
         setIsFavorite(favoriteSnap.exists());
@@ -96,7 +93,7 @@ export default function ProductCard({
   const discountPercentage = Math.round(
     ((product.originalPrice - product.discountedPrice) /
       product.originalPrice) *
-      100
+      100,
   );
 
   const getStatusColor = () => {
@@ -199,17 +196,18 @@ export default function ProductCard({
       <Link
         href={`/product/${product.id}`}
         className={`
-          block bg-white dark:bg-gray-900 rounded-2xl shadow-lg
+          block rounded-2xl shadow-lg dark:shadow-black/40
+
           hover:shadow-2xl transition-all duration-500 overflow-hidden
           border border-gray-100 dark:border-gray-800
           ${layout === "list" ? "sm:flex sm:items-stretch" : "h-full"}
           transform group-hover:-translate-y-2
         `}
       >
-        {/* Product Card Container */}
         <div
           className={`
-            bg-white dark:bg-gray-900 rounded-2xl shadow-lg hover:shadow-2xl 
+            bg-white dark:bg-gray-900 rounded-2xl shadow-lg dark:shadow-black/40
+ hover:shadow-2xl 
             transition-all duration-500 overflow-hidden border border-gray-100 dark:border-gray-800 
             ${
               layout === "list"
