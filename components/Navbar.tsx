@@ -15,7 +15,7 @@ import {
   FiSun,
   FiMoon,
 } from "react-icons/fi";
-
+import { useTheme } from "@/context/ThemeContext";
 import Logo from "@/public/images/comlogo.png";
 
 export default function ClientNavbar() {
@@ -23,6 +23,7 @@ export default function ClientNavbar() {
   const router = useRouter();
   const { user, isLoggedIn, cartItemsCount, favoritesCount, logout } =
     useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -284,17 +285,13 @@ export default function ClientNavbar() {
             </div>
 
             <button
-              onClick={toggleDarkMode}
-              className="hidden md:flex items-center gap-2 text-white hover:bg-gray-50 dark:hover:bg-gray-800 px-4 py-3 rounded-xl"
+              onClick={toggleTheme}
+              className="hidden md:flex items-center gap-2 px-4 py-3 rounded-xl text-white hover:bg-white/10"
             >
-              {darkMode ? (
-                <>
-                  <FiSun className="w-5 h-5" />
-                </>
+              {theme === "dark" ? (
+                <FiSun className="w-5 h-5 text-yellow-400" />
               ) : (
-                <>
-                  <FiMoon className="w-5 h-5" />
-                </>
+                <FiMoon className="w-5 h-5 text-gray-200" />
               )}
             </button>
 
