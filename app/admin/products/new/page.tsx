@@ -75,7 +75,7 @@ export default function NewProductPage() {
       "Others",
     ],
     Importation: [
-      "Clothes",
+      "Fashion",
       "Bags",
       "Jewelry",
       "Home Appliances",

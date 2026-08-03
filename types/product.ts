@@ -7,13 +7,17 @@ export interface Product {
   originalPrice: number;
   discountedPrice: number;
   category: string;
-  categorySlug: "skincare" | "fragrance" | "makeup";
+  categorySlug: "skincare" | "fragrance" | "importation" | "accessories";
   subCategory?: string;
   quantity: number;
   status: "In Stock" | "Low Stock" | "Out of Stock";
   imageUrl?: string;
   createdAt?: Timestamp | Date;
   updatedAt?: Timestamp | Date;
+  rating?: number;
+  reviewCount?: number;
+  isImported?: boolean;
+  isPreOrder?: boolean;
 }
 
 export interface ProductCardProps {

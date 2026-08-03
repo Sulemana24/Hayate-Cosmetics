@@ -688,21 +688,6 @@ export default function OrdersPage() {
 
                             <button
                               onClick={() =>
-                                updateOrderStatus(order.id, "processing")
-                              }
-                              disabled={order.status !== "pending"}
-                              className={`p-2 rounded-lg transition-colors duration-200 ${
-                                order.status !== "pending"
-                                  ? "opacity-50 cursor-not-allowed text-gray-400"
-                                  : "text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/30"
-                              }`}
-                              title="Confirm Order"
-                            >
-                              <FiCheck className="w-4 h-4" />
-                            </button>
-
-                            <button
-                              onClick={() =>
                                 handleDelete(order.id, order.orderCode)
                               }
                               className="p-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors duration-200"

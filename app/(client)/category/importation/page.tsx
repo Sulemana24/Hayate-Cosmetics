@@ -1,8 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import ClientNavbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import { useState, useEffect } from "react";
 import BackToTop from "@/components/BackToTopButton";
 import { db } from "@/lib/firebase";
 import {
@@ -12,9 +10,6 @@ import {
   where,
   orderBy,
   limit,
-  startAfter,
-  DocumentData,
-  QueryDocumentSnapshot,
 } from "firebase/firestore";
 import Image from "next/image";
 import Link from "next/link";
@@ -22,11 +17,8 @@ import {
   FiSearch,
   FiFilter,
   FiX,
-  FiChevronDown,
-  FiChevronUp,
   FiGrid,
   FiList,
-  FiShoppingBag,
   FiStar,
   FiClock,
   FiTrendingUp,
@@ -41,41 +33,23 @@ interface Product {
   discountedPrice: number;
   imageUrl: string;
   category: string;
+  subCategory: string;
   status: string;
   description: string;
   originalPrice: number;
+  quantity: number;
   rating?: number;
   discountPercentage: number;
   origin?: string;
   importDate?: string;
   isImported?: boolean;
+  createdAt?: any;
+  updatedAt?: any;
+  categorySlug?: string;
+  subCategorySlug?: string;
 }
 
-// Filter options
-const CATEGORIES = [
-  "All Categories",
-  "Skincare",
-  "Makeup",
-  "Hair Care",
-  "Fragrance",
-  "Body Care",
-  "Natural",
-  "Luxury",
-];
-
-const ORIGINS = [
-  "All Origins",
-  "France",
-  "Italy",
-  "Japan",
-  "Korea",
-  "USA",
-  "UK",
-  "Germany",
-  "Australia",
-  "Brazil",
-];
-
+// Filter options - dynamically populated from products
 const SORT_OPTIONS = [
   { label: "Newest First", value: "newest" },
   { label: "Price: Low to High", value: "price_asc" },
@@ -108,8 +82,8 @@ export default function ImportedGoodsPage() {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All Categories");
-  const [selectedOrigin, setSelectedOrigin] = useState("All Origins");
+  const [selectedSubCategory, setSelectedSubCategory] =
+    useState("All Sub-Categories");
   const [sortBy, setSortBy] = useState("newest");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
@@ -118,71 +92,85 @@ export default function ImportedGoodsPage() {
   const [inStockOnly, setInStockOnly] = useState(false);
   const [onSaleOnly, setOnSaleOnly] = useState(false);
 
-  // Fetch imported goods
+  // Get unique sub-categories from imported products
+  const getSubCategories = () => {
+    const subCategories = new Set<string>();
+    products.forEach((product) => {
+      if (product.subCategory) {
+        subCategories.add(product.subCategory);
+      }
+    });
+    return ["All Sub-Categories", ...Array.from(subCategories)];
+  };
+
+  const subCategoryOptions = getSubCategories();
+
+  // Fetch imported goods (products with category "Importation")
   useEffect(() => {
     const fetchImportedGoods = async () => {
       try {
+        setLoading(true);
         const productsRef = collection(db, "products");
-        // Query for imported products - adjust based on your data structure
+
+        // Query for products where category is "Importation"
         const q = query(
           productsRef,
-          where("isImported", "==", true),
+          where("category", "==", "Importation"),
           orderBy("createdAt", "desc"),
           limit(50),
         );
-        const snapshot = await getDocs(q);
-        const products = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Product[];
 
-        // If no products marked as imported, use a sample of all products with origins
-        if (products.length === 0) {
-          const allProducts = await getDocs(collection(db, "products"));
-          const all = allProducts.docs.map((doc) => ({
+        const snapshot = await getDocs(q);
+        const productsList = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
             id: doc.id,
-            ...doc.data(),
-            isImported: true,
-            origin: [
-              "France",
-              "Italy",
-              "Japan",
-              "Korea",
-              "USA",
-              "UK",
-              "Germany",
-              "Australia",
-              "Brazil",
-            ][Math.floor(Math.random() * 9)],
-          })) as Product[];
-          setProducts(all.slice(0, 20));
-        } else {
-          setProducts(products);
-        }
+            ...data,
+            // Calculate discount percentage if not present
+            discountPercentage:
+              data.discountPercentage ||
+              (data.originalPrice > data.discountedPrice
+                ? Math.round(
+                    ((data.originalPrice - data.discountedPrice) /
+                      data.originalPrice) *
+                      100,
+                  )
+                : 0),
+            // Set origin based on sub-category or default
+            origin: "Imported",
+          };
+        }) as Product[];
+
+        setProducts(productsList);
       } catch (error) {
         console.error("Error fetching imported goods:", error);
-        // Fallback: fetch all products and add random origins
+
+        // Fallback: Fetch all products and filter client-side
         try {
-          const allProducts = await getDocs(collection(db, "products"));
-          const all = allProducts.docs.map((doc) => ({
+          const allProductsRef = collection(db, "products");
+          const allSnapshot = await getDocs(allProductsRef);
+          const allProducts = allSnapshot.docs.map((doc) => ({
             id: doc.id,
             ...doc.data(),
-            isImported: true,
-            origin: [
-              "France",
-              "Italy",
-              "Japan",
-              "Korea",
-              "USA",
-              "UK",
-              "Germany",
-              "Australia",
-              "Brazil",
-            ][Math.floor(Math.random() * 9)],
+            discountPercentage:
+              doc.data().discountPercentage ||
+              (doc.data().originalPrice > doc.data().discountedPrice
+                ? Math.round(
+                    ((doc.data().originalPrice - doc.data().discountedPrice) /
+                      doc.data().originalPrice) *
+                      100,
+                  )
+                : 0),
           })) as Product[];
-          setProducts(all.slice(0, 20));
+
+          // Filter products with category "Importation"
+          const imported = allProducts.filter(
+            (p) => p.category === "Importation",
+          );
+          setProducts(imported);
         } catch (fallbackError) {
           console.error("Fallback error:", fallbackError);
+          setProducts([]);
         }
       } finally {
         setLoading(false);
@@ -195,7 +183,9 @@ export default function ImportedGoodsPage() {
   // Calculate max price for range
   useEffect(() => {
     if (products.length > 0) {
-      const max = Math.max(...products.map((p) => p.discountedPrice));
+      const max = Math.max(
+        ...products.map((p) => p.discountedPrice || p.price || 0),
+      );
       setMaxPrice(Math.ceil(max));
       setPriceRange([0, Math.ceil(max)]);
     }
@@ -212,32 +202,28 @@ export default function ImportedGoodsPage() {
         (product) =>
           product.name.toLowerCase().includes(query) ||
           product.description?.toLowerCase().includes(query) ||
-          product.category?.toLowerCase().includes(query),
+          product.category?.toLowerCase().includes(query) ||
+          product.subCategory?.toLowerCase().includes(query) ||
+          product.origin?.toLowerCase().includes(query),
       );
     }
 
-    // Category filter
-    if (selectedCategory !== "All Categories") {
+    // Sub-Category filter
+    if (selectedSubCategory !== "All Sub-Categories") {
       result = result.filter(
-        (product) => product.category === selectedCategory,
+        (product) => product.subCategory === selectedSubCategory,
       );
-    }
-
-    // Origin filter
-    if (selectedOrigin !== "All Origins") {
-      result = result.filter((product) => product.origin === selectedOrigin);
     }
 
     // Price range filter
-    result = result.filter(
-      (product) =>
-        product.discountedPrice >= priceRange[0] &&
-        product.discountedPrice <= priceRange[1],
-    );
+    result = result.filter((product) => {
+      const price = product.discountedPrice || product.price || 0;
+      return price >= priceRange[0] && price <= priceRange[1];
+    });
 
     // In stock filter
     if (inStockOnly) {
-      result = result.filter((product) => product.status === "in-stock");
+      result = result.filter((product) => product.status === "In Stock");
     }
 
     // On sale filter
@@ -245,20 +231,33 @@ export default function ImportedGoodsPage() {
       result = result.filter(
         (product) =>
           product.discountPercentage > 0 ||
-          product.originalPrice > product.discountedPrice,
+          (product.originalPrice &&
+            product.originalPrice > (product.discountedPrice || product.price)),
       );
     }
 
     // Sorting
     switch (sortBy) {
       case "newest":
-        result.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+        result.sort((a, b) => {
+          const dateA = a.createdAt?.toMillis?.() || a.createdAt || 0;
+          const dateB = b.createdAt?.toMillis?.() || b.createdAt || 0;
+          return dateB - dateA;
+        });
         break;
       case "price_asc":
-        result.sort((a, b) => a.discountedPrice - b.discountedPrice);
+        result.sort(
+          (a, b) =>
+            (a.discountedPrice || a.price || 0) -
+            (b.discountedPrice || b.price || 0),
+        );
         break;
       case "price_desc":
-        result.sort((a, b) => b.discountedPrice - a.discountedPrice);
+        result.sort(
+          (a, b) =>
+            (b.discountedPrice || b.price || 0) -
+            (a.discountedPrice || a.price || 0),
+        );
         break;
       case "rating":
         result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
@@ -274,8 +273,7 @@ export default function ImportedGoodsPage() {
   }, [
     products,
     searchQuery,
-    selectedCategory,
-    selectedOrigin,
+    selectedSubCategory,
     sortBy,
     priceRange,
     inStockOnly,
@@ -284,8 +282,7 @@ export default function ImportedGoodsPage() {
 
   const clearFilters = () => {
     setSearchQuery("");
-    setSelectedCategory("All Categories");
-    setSelectedOrigin("All Origins");
+    setSelectedSubCategory("All Sub-Categories");
     setPriceRange([0, maxPrice]);
     setInStockOnly(false);
     setOnSaleOnly(false);
@@ -295,8 +292,7 @@ export default function ImportedGoodsPage() {
   const hasActiveFilters = () => {
     return (
       searchQuery !== "" ||
-      selectedCategory !== "All Categories" ||
-      selectedOrigin !== "All Origins" ||
+      selectedSubCategory !== "All Sub-Categories" ||
       inStockOnly ||
       onSaleOnly ||
       priceRange[0] > 0 ||
@@ -315,8 +311,8 @@ export default function ImportedGoodsPage() {
               Imported Goods
             </h1>
             <p className="text-lg md:text-xl text-white/70 max-w-2xl">
-              Discover premium beauty products sourced from around the world.
-              From French luxury to K-beauty innovations.
+              Discover premium products sourced from around the world. From
+              household essentials to luxury items.
             </p>
             <div className="flex flex-wrap gap-3 mt-6">
               <div className="flex items-center gap-2 text-white/60 text-sm">
@@ -405,50 +401,18 @@ export default function ImportedGoodsPage() {
           {/* Active Filters */}
           {hasActiveFilters() && (
             <div className="flex flex-wrap gap-2 mt-4">
-              {selectedCategory !== "All Categories" && (
+              {selectedSubCategory !== "All Sub-Categories" && (
                 <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#E39A89]/15 text-[#E39A89] rounded-full text-sm">
-                  {selectedCategory}
+                  {selectedSubCategory}
                   <button
-                    onClick={() => setSelectedCategory("All Categories")}
+                    onClick={() => setSelectedSubCategory("All Sub-Categories")}
                     className="hover:text-[#d48776]"
                   >
                     <IoMdClose className="w-4 h-4" />
                   </button>
                 </span>
               )}
-              {selectedOrigin !== "All Origins" && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#8FA593]/15 text-[#8FA593] rounded-full text-sm">
-                  {selectedOrigin}
-                  <button
-                    onClick={() => setSelectedOrigin("All Origins")}
-                    className="hover:text-[#6d8a79]"
-                  >
-                    <IoMdClose className="w-4 h-4" />
-                  </button>
-                </span>
-              )}
-              {inStockOnly && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-500/15 text-green-600 rounded-full text-sm">
-                  In Stock
-                  <button
-                    onClick={() => setInStockOnly(false)}
-                    className="hover:text-green-700"
-                  >
-                    <IoMdClose className="w-4 h-4" />
-                  </button>
-                </span>
-              )}
-              {onSaleOnly && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-500/15 text-red-600 rounded-full text-sm">
-                  On Sale
-                  <button
-                    onClick={() => setOnSaleOnly(false)}
-                    className="hover:text-red-700"
-                  >
-                    <IoMdClose className="w-4 h-4" />
-                  </button>
-                </span>
-              )}
+
               {(priceRange[0] > 0 || priceRange[1] < maxPrice) && (
                 <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#1b3c35]/10 dark:bg-white/10 rounded-full text-sm">
                   ₵{priceRange[0]} - ₵{priceRange[1]}
@@ -472,37 +436,19 @@ export default function ImportedGoodsPage() {
           {/* Expanded Filters */}
           {showFilters && (
             <div className="mt-4 p-4 sm:p-6 bg-white dark:bg-[#16302a] rounded-2xl ring-1 ring-[#1b3c35]/10 dark:ring-white/10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Category Filter */}
+              {/* Sub-Category Filter */}
               <div>
                 <label className="block text-sm font-medium text-[#1b3c35] dark:text-white mb-2">
-                  Category
+                  Sub-Category
                 </label>
                 <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  value={selectedSubCategory}
+                  onChange={(e) => setSelectedSubCategory(e.target.value)}
                   className="w-full px-3 py-2 bg-[#FBF6EF] dark:bg-[#0f1e1a] rounded-lg ring-1 ring-[#1b3c35]/15 dark:ring-white/15 focus:ring-[#E39A89] focus:outline-none text-[#1b3c35] dark:text-white"
                 >
-                  {CATEGORIES.map((cat) => (
+                  {subCategoryOptions.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Origin Filter */}
-              <div>
-                <label className="block text-sm font-medium text-[#1b3c35] dark:text-white mb-2">
-                  Origin
-                </label>
-                <select
-                  value={selectedOrigin}
-                  onChange={(e) => setSelectedOrigin(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#FBF6EF] dark:bg-[#0f1e1a] rounded-lg ring-1 ring-[#1b3c35]/15 dark:ring-white/15 focus:ring-[#E39A89] focus:outline-none text-[#1b3c35] dark:text-white"
-                >
-                  {ORIGINS.map((origin) => (
-                    <option key={origin} value={origin}>
-                      {origin}
                     </option>
                   ))}
                 </select>
@@ -556,7 +502,7 @@ export default function ImportedGoodsPage() {
                     type="checkbox"
                     checked={inStockOnly}
                     onChange={(e) => setInStockOnly(e.target.checked)}
-                    className="w-4 h-4 accent-[#E39A89]"
+                    className="w-4 h-4 rounded border-[#1b3c35]/30 dark:border-white/30 text-[#E39A89] focus:ring-[#E39A89]"
                   />
                   In Stock Only
                 </label>
@@ -565,7 +511,7 @@ export default function ImportedGoodsPage() {
                     type="checkbox"
                     checked={onSaleOnly}
                     onChange={(e) => setOnSaleOnly(e.target.checked)}
-                    className="w-4 h-4 accent-[#E39A89]"
+                    className="w-4 h-4 rounded border-[#1b3c35]/30 dark:border-white/30 text-[#E39A89] focus:ring-[#E39A89]"
                   />
                   On Sale Only
                 </label>
@@ -588,11 +534,11 @@ export default function ImportedGoodsPage() {
             <p className="text-sm text-[#1b3c35]/60 dark:text-white/60">
               {loading
                 ? "Loading..."
-                : `Showing ${filteredProducts.length} products`}
+                : `Showing ${filteredProducts.length} imported products`}
             </p>
             {!loading && filteredProducts.length === 0 && (
               <p className="text-sm text-[#E39A89]">
-                No products found matching your criteria
+                No imported products found matching your criteria
               </p>
             )}
           </div>
@@ -638,13 +584,11 @@ export default function ImportedGoodsPage() {
                       height={400}
                       className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
                     />
-                    {/* Origin Badge */}
-                    {product.origin && (
-                      <div className="absolute top-2.5 left-2.5 bg-[#1b3c35] text-white px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider flex items-center gap-1">
-                        <FiMapPin className="w-3 h-3" />
-                        {product.origin}
-                      </div>
-                    )}
+                    {/* Imported Badge */}
+                    <div className="absolute top-2.5 left-2.5 bg-[#1b3c35] text-white px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider flex items-center gap-1">
+                      <FiMapPin className="w-3 h-3" />
+                      Imported
+                    </div>
                     {product.discountPercentage > 0 && (
                       <div className="absolute top-2.5 right-2.5 bg-[#E39A89] text-white px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider">
                         -{product.discountPercentage}%
@@ -673,9 +617,9 @@ export default function ImportedGoodsPage() {
                         {product.description}
                       </p>
                     )}
-                    {viewMode === "list" && product.origin && (
+                    {viewMode === "list" && product.subCategory && (
                       <p className="text-xs text-[#1b3c35]/40 dark:text-white/40 mb-2">
-                        Origin: {product.origin}
+                        {product.subCategory}
                       </p>
                     )}
                     <div
@@ -684,22 +628,34 @@ export default function ImportedGoodsPage() {
                       }`}
                     >
                       <span className="text-lg font-bold text-[#1b3c35] dark:text-white">
-                        ₵{product.discountedPrice.toFixed(2)}
+                        ₵
+                        {(
+                          product.discountedPrice ||
+                          product.price ||
+                          0
+                        ).toFixed(2)}
                       </span>
-                      {product.originalPrice > product.discountedPrice && (
-                        <span className="text-sm line-through text-[#26261F]/35 dark:text-white/35">
-                          ₵{product.originalPrice.toFixed(2)}
-                        </span>
-                      )}
+                      {product.originalPrice &&
+                        product.originalPrice >
+                          (product.discountedPrice || product.price) && (
+                          <span className="text-sm line-through text-[#26261F]/35 dark:text-white/35">
+                            ₵{product.originalPrice.toFixed(2)}
+                          </span>
+                        )}
                       {viewMode === "list" && (
                         <span className="ml-auto text-sm text-[#E39A89] font-medium">
                           View Details →
                         </span>
                       )}
                     </div>
-                    {viewMode === "grid" && product.status === "in-stock" && (
+                    {viewMode === "grid" && product.status === "In Stock" && (
                       <div className="mt-2 text-xs text-green-600 dark:text-green-400 font-medium">
                         In Stock
+                      </div>
+                    )}
+                    {viewMode === "grid" && product.status === "Low Stock" && (
+                      <div className="mt-2 text-xs text-yellow-600 dark:text-yellow-400 font-medium">
+                        Low Stock
                       </div>
                     )}
                   </div>
@@ -708,12 +664,12 @@ export default function ImportedGoodsPage() {
             </div>
           ) : (
             <div className="text-center py-20">
-              <div className="text-6xl mb-4">🔍</div>
+              <div className="text-6xl mb-4">🌍</div>
               <h3 className="text-2xl font-semibold text-[#1b3c35] dark:text-white mb-2">
-                No products found
+                No imported products found
               </h3>
               <p className="text-[#1b3c35]/60 dark:text-white/60">
-                Try adjusting your filters or search terms
+                We&apos;re currently sourcing new products. Check back soon!
               </p>
               <button
                 onClick={clearFilters}

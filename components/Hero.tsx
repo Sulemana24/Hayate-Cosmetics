@@ -20,6 +20,7 @@ import Image4 from "../public/images/catb.jpg";
 import Image5 from "../public/images/catp.jpg";
 import Image6 from "../public/images/catcos.jpg";
 import Image7 from "../public/images/mak.jpg";
+import Image8 from "../public/images/Import.jpg";
 import {
   collection,
   getDocs,
@@ -179,9 +180,9 @@ export default function HeroSection() {
     {
       id: 4,
       name: "Importation",
-      image: Image7,
-      count: `${categoryCounts["Makeup"] ?? 0} Products`,
-      link: "/category/makeup",
+      image: Image8,
+      count: `${categoryCounts["Importation"] ?? 0} Products`,
+      link: "/category/importation",
     },
   ];
 

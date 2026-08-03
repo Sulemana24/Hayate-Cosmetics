@@ -651,19 +651,6 @@ export default function CheckoutPage() {
 
       handlePaymentCallbackRef.current = callbackFn;
 
-      /*
-       * =====================================================
-       * STEP 3
-       * OPEN PAYSTACK
-       * =====================================================
-       *
-       * IMPORTANT:
-       *
-       * The amount comes from the SERVER.
-       *
-       * We do NOT use finalTotal here.
-       */
-
       const paystackConfig: PaystackOptions = {
         key: paystackPublicKey,
 
@@ -732,29 +719,11 @@ export default function CheckoutPage() {
     }
   };
 
-  /*
-   * =========================================================
-   * CLEANUP
-   * =========================================================
-   */
-
   useEffect(() => {
     return () => {
       handlePaymentCallbackRef.current = null;
-
-      /*
-       * We don't remove the Paystack script
-       * because it can safely remain available
-       * for the lifetime of the page.
-       */
     };
   }, []);
-
-  /*
-   * =========================================================
-   * STEPS
-   * =========================================================
-   */
 
   const steps = [
     {
@@ -769,12 +738,6 @@ export default function CheckoutPage() {
     },
   ];
 
-  /*
-   * =========================================================
-   * LOADING
-   * =========================================================
-   */
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -788,12 +751,6 @@ export default function CheckoutPage() {
       </div>
     );
   }
-
-  /*
-   * =========================================================
-   * EMPTY CART
-   * =========================================================
-   */
 
   if (cartItems.length === 0 && !paymentSuccess) {
     return (
@@ -819,12 +776,6 @@ export default function CheckoutPage() {
       </div>
     );
   }
-
-  /*
-   * =========================================================
-   * PAYMENT SUCCESS
-   * =========================================================
-   */
 
   if (paymentSuccess) {
     return (
@@ -927,16 +878,8 @@ export default function CheckoutPage() {
           </div>
 
           <div className="grid lg:grid-cols-3 gap-6 sm:gap-8">
-            {/* =================================================
-                MAIN CONTENT
-            ================================================= */}
-
             <div className="lg:col-span-2">
               <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-lg sm:shadow-xl p-4 sm:p-6 md:p-8 mb-6 sm:mb-8">
-                {/* =============================================
-                    STEP 1
-                ============================================= */}
-
                 {activeStep === 1 && (
                   <div>
                     <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
@@ -1119,10 +1062,6 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                {/* =============================================
-                    STEP 2
-                ============================================= */}
-
                 {activeStep === 2 && (
                   <div>
                     <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
@@ -1215,10 +1154,6 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                {/* =============================================
-                    NAVIGATION
-                ============================================= */}
-
                 <div className="flex flex-col sm:flex-row justify-between gap-3 mt-6 pt-6 border-t">
                   {activeStep === 2 ? (
                     <button
@@ -1277,10 +1212,6 @@ export default function CheckoutPage() {
                 Your payment information is secure and encrypted
               </div>
             </div>
-
-            {/* =================================================
-                ORDER SUMMARY
-            ================================================= */}
 
             <div className="space-y-6">
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">

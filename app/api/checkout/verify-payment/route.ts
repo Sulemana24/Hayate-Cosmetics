@@ -56,11 +56,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const orderRef = adminDb
-      .collection("users")
-      .doc(userId)
-      .collection("orders")
-      .doc(orderId);
+    const orderRef = adminDb.collection("orders").doc(orderId);
 
     const orderSnapshot = await orderRef.get();
 
@@ -83,6 +79,16 @@ export async function POST(request: NextRequest) {
           message: "Unable to read order.",
         },
         { status: 500 },
+      );
+    }
+
+    if (order.userId !== userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "You are not authorized to verify this order.",
+        },
+        { status: 403 },
       );
     }
 
