@@ -290,7 +290,7 @@ export default function LoginClient() {
             <button
               type="submit"
               disabled={buttonLoading}
-              className="w-full py-3.5 bg-gradient-to-r from-[#e39a89] to-[#d87a6a] text-white rounded-xl font-medium hover:opacity-90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-gradient-to-r from-[#e39a89] to-[#d87a6a] text-white rounded-xl font-medium hover:opacity-90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
             >
               {buttonLoading ? (
                 <>
@@ -319,7 +319,7 @@ export default function LoginClient() {
                       password: "",
                     }));
                   }}
-                  className="ml-2 text-[#e39a89] hover:text-[#d87a6a] font-medium"
+                  className="ml-2 text-[#e39a89] hover:text-[#d87a6a] font-medium cursor-pointer"
                 >
                   {isLogin ? "Sign up" : "Sign in"}
                 </button>

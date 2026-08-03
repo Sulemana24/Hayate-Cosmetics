@@ -4,17 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import { getAuth } from "firebase/auth";
 import { db } from "@/lib/firebase";
 import { useToast } from "@/components/ToastProvider";
-import {
-  collection,
-  getDocs,
-  doc,
-  writeBatch,
-  setDoc,
-  updateDoc,
-  serverTimestamp,
-  increment,
-} from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+
 import {
   FiLock,
   FiCreditCard,
@@ -61,14 +53,6 @@ interface PaystackResponse {
   channel: string;
 }
 
-declare global {
-  interface Window {
-    PaystackPop: {
-      setup: (options: PaystackOptions) => { openIframe: () => void };
-    };
-  }
-}
-
 interface PaystackOptions {
   key: string;
   email: string;
@@ -80,23 +64,52 @@ interface PaystackOptions {
   onClose: () => void;
 }
 
+interface CreatedOrder {
+  orderId: string;
+  orderCode: string;
+  amount: number;
+  currency: string;
+}
+
+declare global {
+  interface Window {
+    PaystackPop: {
+      setup: (options: PaystackOptions) => {
+        openIframe: () => void;
+      };
+    };
+  }
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
   const auth = getAuth();
   const { showToast } = useToast();
+
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
   const [activeStep, setActiveStep] = useState(1);
+
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [orderId, setOrderId] = useState<string>("");
-  const [tempOrderId, setTempOrderId] = useState<string>("");
+
+  const [orderId, setOrderId] = useState("");
+
+  const [tempOrderId, setTempOrderId] = useState("");
+
   const [paystackLoaded, setPaystackLoaded] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const [creatingOrder, setCreatingOrder] = useState(false);
+
   const scriptRef = useRef<HTMLScriptElement | null>(null);
+
   const tempOrderIdRef = useRef<string>("");
-  const currentUserIdRef = useRef<string>("");
-  const cartItemsRef = useRef<CartItem[]>([]);
+
+  const handlePaymentCallbackRef = useRef<
+    ((response: PaystackResponse) => void) | null
+  >(null);
 
   const paystackPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "";
 
@@ -106,8 +119,8 @@ export default function CheckoutPage() {
     email: "",
     phone: "",
     address: "",
-    regions: "",
     city: "",
+    regions: "",
     locality: "",
     country: "Ghana",
     paymentMethod: "mobile_money",
@@ -116,9 +129,11 @@ export default function CheckoutPage() {
 
   const totalPrice = cartItems.reduce(
     (acc, item) => acc + item.price * item.quantity,
-    0
+    0,
   );
+
   const shippingFee = 0;
+
   const finalTotal = totalPrice + shippingFee;
 
   const itemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -128,29 +143,24 @@ export default function CheckoutPage() {
   }, [tempOrderId]);
 
   useEffect(() => {
-    currentUserIdRef.current = currentUserId || "";
-  }, [currentUserId]);
-
-  useEffect(() => {
-    cartItemsRef.current = cartItems;
-  }, [cartItems]);
-
-  useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
+      setAuthReady(true);
+
       if (user) {
         setCurrentUserId(user.uid);
-        currentUserIdRef.current = user.uid;
+
         setFormData((prev) => ({
           ...prev,
-          email: user.email || "",
+          email: user.email || prev.email,
         }));
       } else {
+        setCurrentUserId(null);
         router.push("/login?redirect=/checkout");
       }
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, [router, auth]);
 
   useEffect(() => {
     if (!currentUserId) {
@@ -161,20 +171,24 @@ export default function CheckoutPage() {
     const fetchCart = async () => {
       try {
         setLoading(true);
+
         const cartRef = collection(db, "users", currentUserId, "cart");
+
         const snapshot = await getDocs(cartRef);
 
-        const items = snapshot.docs.map((docSnap) => {
-          const { id, ...rest } = docSnap.data() as CartItem;
+        const items: CartItem[] = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data() as Omit<CartItem, "id">;
+
           return {
             id: docSnap.id,
-            ...rest,
+            ...data,
           };
         });
 
         setCartItems(items);
-        cartItemsRef.current = items;
-      } catch (err) {
+      } catch (error) {
+        console.error("FETCH CART ERROR:", error);
+
         showToast({
           type: "error",
           message: "Failed to load cart items. Please try again.",
@@ -185,7 +199,7 @@ export default function CheckoutPage() {
     };
 
     fetchCart();
-  }, [currentUserId]);
+  }, [currentUserId, showToast]);
 
   const loadPaystackScript = () => {
     if (document.querySelector('script[src*="paystack"]')) {
@@ -194,142 +208,279 @@ export default function CheckoutPage() {
     }
 
     const script = document.createElement("script");
+
     script.src = "https://js.paystack.co/v1/inline.js";
+
     script.async = true;
+
     script.onload = () => {
-      setTimeout(() => {
-        setPaystackLoaded(true);
-      }, 0);
+      setPaystackLoaded(true);
     };
+
     script.onerror = () => {
+      setPaystackLoaded(false);
+
       showToast({
         type: "error",
         message: "Failed to load payment gateway. Please try again later.",
       });
-      setTimeout(() => {
-        setPaystackLoaded(false);
-      }, 0);
     };
 
     scriptRef.current = script;
+
     document.head.appendChild(script);
   };
 
-  const createTempOrder = async (): Promise<string> => {
-    if (!currentUserId) {
-      throw new Error("User must be logged in to create an order");
+  const createTempOrder = async (): Promise<CreatedOrder> => {
+    if (creatingOrder) {
+      throw new Error("An order is already being prepared.");
     }
 
-    const now = serverTimestamp();
-    const orderCode = `HAY-${Math.floor(10000 + Math.random() * 90000)}`;
+    const user = auth.currentUser;
 
-    const orderData = {
-      userId: currentUserId,
-      items: cartItemsRef.current,
-      subtotal: totalPrice,
-      shippingFee,
-      tax: 0,
-      totalAmount: finalTotal,
-      status: "pending_payment",
-      paymentStatus: "pending",
-      paymentMethod: "paystack",
+    if (!user) {
+      throw new Error("Your session has expired. Please log in again.");
+    }
 
-      shippingAddress: {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        address: formData.address,
-        city: formData.city,
-        region: formData.regions,
-        locality: formData.locality,
-        country: formData.country,
-        phone: formData.phone,
-        email: formData.email,
-      },
+    try {
+      setCreatingOrder(true);
 
-      customerName: `${formData.firstName} ${formData.lastName}`,
-      customerEmail: formData.email,
-      customerPhone: formData.phone,
-      orderCode,
-      createdAt: now,
-      updatedAt: now,
-    };
+      const idToken = await user.getIdToken(true);
 
-    const userOrderRef = doc(collection(db, "users", currentUserId, "orders"));
-
-    const orderId = userOrderRef.id;
-
-    await setDoc(userOrderRef, orderData);
-
-    await setDoc(doc(db, "orders", orderId), {
-      ...orderData,
-      userId: currentUserId,
-    });
-
-    setTempOrderId(orderId);
-    tempOrderIdRef.current = orderId;
-
-    return orderId;
-  };
-
-  const updateOrderAfterPayment = async (
-    paymentReference: string,
-    paymentResponse: PaystackResponse,
-    orderId: string,
-    userId: string
-  ) => {
-    const updateData = {
-      paymentStatus: "completed",
-      paymentReference,
-      status: "processing",
-      confirmedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      transactionId: paymentResponse.transaction,
-      transactionReference: paymentResponse.reference,
-      currency: paymentResponse.currency || "GHS",
-      channel: paymentResponse.channel || "MOMO",
-    };
-
-    await updateDoc(doc(db, "users", userId, "orders", orderId), updateData);
-
-    await updateDoc(doc(db, "orders", orderId), updateData);
-
-    const batch = writeBatch(db);
-    cartItemsRef.current.forEach((item) => {
-      batch.delete(doc(db, "users", userId, "cart", item.id));
-    });
-    await batch.commit();
-  };
-
-  const updateProductQuantities = async () => {
-    const batch = writeBatch(db);
-
-    cartItemsRef.current.forEach((item) => {
-      if (!item.productId) {
-        throw new Error("Missing productId in cart item");
+      if (!idToken) {
+        throw new Error("Unable to authenticate your session.");
       }
 
-      const productRef = doc(db, "products", item.productId);
+      const payload = {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        address: formData.address.trim(),
+        city: formData.city.trim(),
+        regions: formData.regions.trim(),
+        locality: formData.locality.trim(),
+        country: formData.country,
+      };
 
-      batch.update(productRef, {
-        quantity: increment(-item.quantity),
-        updatedAt: serverTimestamp(),
+      console.log("Creating temporary order...");
+
+      const response = await fetch("/api/checkout/create-order", {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+
+        credentials: "same-origin",
+
+        cache: "no-store",
+
+        body: JSON.stringify(payload),
       });
-    });
 
-    await batch.commit();
-  };
+      const responseText = await response.text();
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value, type } = e.target;
-    if (type === "checkbox") {
-      const checked = (e.target as HTMLInputElement).checked;
-      setFormData((prev) => ({ ...prev, [name]: checked }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
+      let data: any = null;
+
+      try {
+        data = responseText ? JSON.parse(responseText) : null;
+      } catch {
+        console.error("CREATE ORDER returned non-JSON response:", responseText);
+
+        throw new Error(
+          `Checkout server returned an invalid response (${response.status}).`,
+        );
+      }
+
+      console.log("Create order response:", {
+        status: response.status,
+        data,
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          data?.message ||
+            data?.error ||
+            `Unable to create order. Server returned ${response.status}.`,
+        );
+      }
+
+      if (!data?.success) {
+        throw new Error(
+          data?.message || "The server could not create your order.",
+        );
+      }
+
+      if (!data.orderId) {
+        throw new Error("The server created an invalid order.");
+      }
+
+      const createdOrder: CreatedOrder = {
+        orderId: String(data.orderId),
+        orderCode: String(data.orderCode || data.orderId),
+        amount: Number(data.amount),
+        currency: data.currency || "GHS",
+      };
+
+      if (!Number.isFinite(createdOrder.amount) || createdOrder.amount <= 0) {
+        throw new Error("Invalid order amount returned by the server.");
+      }
+
+      setTempOrderId(createdOrder.orderId);
+
+      tempOrderIdRef.current = createdOrder.orderId;
+
+      return createdOrder;
+    } catch (error) {
+      console.error("CREATE TEMP ORDER ERROR:", error);
+
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          "Unable to connect to the checkout server. Make sure your Next.js server is running and that /api/checkout/create-order exists.",
+        );
+      }
+
+      throw error;
+    } finally {
+      setCreatingOrder(false);
     }
   };
+
+  const verifyPayment = async (reference: string, orderId: string) => {
+    if (!auth.currentUser) {
+      throw new Error("Your session has expired. Please log in again.");
+    }
+
+    const idToken = await auth.currentUser.getIdToken();
+
+    const response = await fetch("/api/checkout/verify-payment", {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+
+        Authorization: `Bearer ${idToken}`,
+      },
+
+      body: JSON.stringify({
+        reference,
+        orderId,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || "Payment verification failed.");
+    }
+
+    return data;
+  };
+
+  const onPaymentSuccess = async (
+    response: PaystackResponse,
+    orderId: string,
+  ) => {
+    if (!orderId) {
+      console.error("Missing order ID after payment.");
+
+      showToast({
+        type: "error",
+        message:
+          "Payment was successful but we could not identify your order. Please contact support.",
+      });
+
+      setProcessing(false);
+      return;
+    }
+
+    try {
+      setProcessing(true);
+
+      await verifyPayment(response.reference, orderId);
+
+      setPaymentSuccess(true);
+
+      setProcessing(false);
+
+      setOrderId(orderId);
+
+      setCartItems([]);
+
+      showToast({
+        type: "success",
+        message: "Payment successful! Your order has been confirmed.",
+      });
+
+      setTimeout(() => {
+        router.push("/orders?payment=success");
+      }, 3000);
+    } catch (error) {
+      console.error("PAYMENT VERIFICATION FAILED:", error);
+
+      showToast({
+        type: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Payment was successful but we could not confirm your order. Please contact support.",
+      });
+
+      setProcessing(false);
+    }
+  };
+
+  /*
+   * =========================================================
+   * PAYMENT FAILED
+   * =========================================================
+   */
+
+  const onPaymentFailed = (response: PaystackResponse) => {
+    console.log("PAYMENT FAILED/CANCELLED:", response);
+
+    showToast({
+      type: "error",
+      message: "Payment failed or was cancelled. Please try again.",
+    });
+
+    setProcessing(false);
+  };
+
+  /*
+   * =========================================================
+   * INPUT HANDLER
+   * =========================================================
+   */
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    const { name, value, type } = e.target;
+
+    if (type === "checkbox") {
+      const checked = (e.target as HTMLInputElement).checked;
+
+      setFormData((prev) => ({
+        ...prev,
+        [name]: checked,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
+  };
+
+  /*
+   * =========================================================
+   * NEXT STEP
+   * =========================================================
+   */
 
   const handleNextStep = async () => {
     if (activeStep === 1) {
@@ -342,8 +493,9 @@ export default function CheckoutPage() {
         "city",
         "locality",
       ];
+
       const missingFields = requiredFields.filter(
-        (field) => !formData[field as keyof FormData]
+        (field) => !formData[field as keyof FormData],
       );
 
       if (missingFields.length > 0) {
@@ -351,18 +503,26 @@ export default function CheckoutPage() {
           type: "error",
           message: "Please complete all required shipping information.",
         });
+
         return;
       }
-    }
 
-    if (activeStep < 3) {
-      setActiveStep(activeStep + 1);
+      /*
+       * Load Paystack while the user
+       * reviews the order.
+       */
 
-      if (activeStep === 1) {
-        loadPaystackScript();
-      }
+      loadPaystackScript();
+
+      setActiveStep(2);
     }
   };
+
+  /*
+   * =========================================================
+   * PREVIOUS STEP
+   * =========================================================
+   */
 
   const handlePreviousStep = () => {
     if (activeStep > 1) {
@@ -370,85 +530,63 @@ export default function CheckoutPage() {
     }
   };
 
-  const onPaymentSuccess = async (
-    response: PaystackResponse,
-    orderId: string
-  ) => {
-    const userId = currentUserIdRef.current;
-
-    if (!orderId || !userId) {
-      showToast({
-        type: "error",
-        message:
-          "Payment was successful but there was an error updating your order. Please contact support.",
-      });
-      setProcessing(false);
-      return;
-    }
-
-    try {
-      await updateProductQuantities();
-      await updateOrderAfterPayment(
-        response.reference,
-        response,
-        orderId,
-        userId
-      );
-
-      setPaymentSuccess(true);
-      setProcessing(false);
-      setOrderId(orderId);
-      setCartItems([]);
-
-      setTimeout(() => {
-        router.push("/orders?payment=success");
-      }, 3000);
-    } catch (error) {
-      showToast({
-        type: "error",
-        message:
-          "Payment was successful but there was an error updating your order. Please contact support.",
-      });
-      setProcessing(false);
-    }
-  };
-
-  const onPaymentFailed = (response: PaystackResponse) => {
-    showToast({
-      type: "error",
-      message: "Payment failed or was cancelled. Please try again.",
-    });
-  };
+  /*
+   * =========================================================
+   * HANDLE PAYMENT
+   * =========================================================
+   */
 
   const handlePayment = async () => {
+    /*
+     * Validate shipping information
+     */
+
     if (
       !formData.firstName ||
       !formData.lastName ||
       !formData.email ||
-      !formData.phone
+      !formData.phone ||
+      !formData.regions ||
+      !formData.city ||
+      !formData.locality
     ) {
       showToast({
         type: "error",
         message: "Please complete all required shipping information.",
       });
+
       setActiveStep(1);
+
       return;
     }
 
-    if (!currentUserId) {
+    /*
+     * Check authentication
+     */
+
+    if (!auth.currentUser) {
       showToast({
         type: "error",
         message: "You must be logged in to proceed with payment.",
       });
-      router.push("/login");
+
+      router.push("/login?redirect=/checkout");
+
       return;
     }
+
+    /*
+     * Check Paystack
+     */
 
     if (!paystackLoaded) {
       showToast({
         type: "error",
         message: "Payment gateway is loading. Please wait.",
       });
+
+      loadPaystackScript();
+
       return;
     }
 
@@ -457,72 +595,192 @@ export default function CheckoutPage() {
         type: "error",
         message: "Payment gateway is not available. Please try again later.",
       });
+
       return;
     }
 
     if (!paystackPublicKey) {
+      console.error("NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY is missing.");
+
       showToast({
         type: "error",
         message: "Payment configuration error.",
       });
+
+      return;
+    }
+
+    /*
+     * Prevent double clicking
+     */
+
+    if (processing) {
       return;
     }
 
     setProcessing(true);
 
     try {
-      const tempId = await createTempOrder();
+      /*
+       * =====================================================
+       * STEP 1
+       * CREATE ORDER SERVER-SIDE
+       * =====================================================
+       */
 
-      tempOrderIdRef.current = tempId;
+      const createdOrder = await createTempOrder();
+
+      const serverOrderId = createdOrder.orderId;
+
+      /*
+       * =====================================================
+       * STEP 2
+       * CREATE PAYSTACK CALLBACK
+       * =====================================================
+       */
+
+      const callbackFn = async (response: PaystackResponse) => {
+        console.log("Paystack callback:", response);
+
+        if (response.status === "success") {
+          await onPaymentSuccess(response, serverOrderId);
+        } else {
+          onPaymentFailed(response);
+        }
+      };
+
+      handlePaymentCallbackRef.current = callbackFn;
+
+      /*
+       * =====================================================
+       * STEP 3
+       * OPEN PAYSTACK
+       * =====================================================
+       *
+       * IMPORTANT:
+       *
+       * The amount comes from the SERVER.
+       *
+       * We do NOT use finalTotal here.
+       */
 
       const paystackConfig: PaystackOptions = {
         key: paystackPublicKey,
+
         email: formData.email,
-        amount: Math.round(finalTotal * 100),
-        ref: tempId,
-        currency: "GHS",
+
+        amount: Math.round(createdOrder.amount * 100),
+
+        ref: serverOrderId,
+
+        currency: createdOrder.currency,
+
         metadata: {
-          order_id: tempId,
+          order_id: serverOrderId,
+
+          order_code: createdOrder.orderCode,
+
           customer_name: `${formData.firstName} ${formData.lastName}`,
+
           customer_phone: formData.phone,
+
           items_count: itemCount,
+
           shipping_city: formData.city,
+
           shipping_region: formData.regions,
         },
+
         callback: (response: PaystackResponse) => {
-          if (response.status === "success") {
-            onPaymentSuccess(response, tempId);
+          console.log("Paystack callback triggered:", response);
+
+          if (handlePaymentCallbackRef.current) {
+            handlePaymentCallbackRef.current(response);
           } else {
-            onPaymentFailed(response);
+            console.error("Payment callback handler is missing.");
+
+            if (response.status === "success") {
+              onPaymentSuccess(response, tempOrderIdRef.current);
+            } else {
+              onPaymentFailed(response);
+            }
           }
         },
+
         onClose: () => {
+          console.log("Paystack window closed.");
+
           setProcessing(false);
         },
       };
 
       const handler = window.PaystackPop.setup(paystackConfig);
+
       handler.openIframe();
     } catch (error) {
+      console.error("PAYMENT PREPARATION ERROR:", error);
+
       setProcessing(false);
+
       showToast({
         type: "error",
-        message: "Error preparing payment. Please try again.",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Error preparing payment. Please try again.",
       });
     }
   };
 
+  /*
+   * =========================================================
+   * CLEANUP
+   * =========================================================
+   */
+
+  useEffect(() => {
+    return () => {
+      handlePaymentCallbackRef.current = null;
+
+      /*
+       * We don't remove the Paystack script
+       * because it can safely remain available
+       * for the lifetime of the page.
+       */
+    };
+  }, []);
+
+  /*
+   * =========================================================
+   * STEPS
+   * =========================================================
+   */
+
   const steps = [
-    { id: 1, name: "Shipping", icon: <FiTruck /> },
-    { id: 2, name: "Payment", icon: <FiCreditCard /> },
-    { id: 3, name: "Review", icon: <FiCheckCircle /> },
+    {
+      id: 1,
+      name: "Shipping",
+      icon: <FiTruck />,
+    },
+    {
+      id: 2,
+      name: "Review & Pay",
+      icon: <FiCreditCard />,
+    },
   ];
+
+  /*
+   * =========================================================
+   * LOADING
+   * =========================================================
+   */
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#d87a6a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-[#d87a6a] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+
           <p className="text-gray-600 dark:text-gray-400">
             Loading your cart...
           </p>
@@ -531,20 +789,29 @@ export default function CheckoutPage() {
     );
   }
 
+  /*
+   * =========================================================
+   * EMPTY CART
+   * =========================================================
+   */
+
   if (cartItems.length === 0 && !paymentSuccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
         <div className="text-center max-w-md">
           <FiTruck className="w-16 h-16 sm:w-24 sm:h-24 text-gray-300 dark:text-gray-700 mx-auto mb-4 sm:mb-6" />
+
           <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">
             Your cart is empty
           </h1>
+
           <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base mb-6 sm:mb-8">
             Add items to your cart before proceeding to checkout.
           </p>
+
           <button
             onClick={() => router.push("/cart")}
-            className="px-6 py-2.5 sm:px-8 sm:py-3 bg-[#d87a6a] text-white rounded-lg sm:rounded-xl hover:bg-[#c76a5a] transition-colors font-medium text-sm sm:text-base w-full sm:w-auto"
+            className="px-6 py-2.5 sm:px-8 sm:py-3 bg-[#d87a6a] text-white rounded-lg sm:rounded-xl hover:bg-[#c76a5a] transition-colors font-medium text-sm sm:text-base w-full sm:w-auto cursor-pointer"
           >
             Return to Cart
           </button>
@@ -552,6 +819,12 @@ export default function CheckoutPage() {
       </div>
     );
   }
+
+  /*
+   * =========================================================
+   * PAYMENT SUCCESS
+   * =========================================================
+   */
 
   if (paymentSuccess) {
     return (
@@ -561,12 +834,21 @@ export default function CheckoutPage() {
             <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center">
               <FiCheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
             </div>
+
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">
               Payment Successful!
             </h2>
+
             <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base mb-2">
               Your order has been placed successfully.
             </p>
+
+            {orderId && (
+              <p className="text-xs sm:text-sm text-gray-500 mb-6">
+                Order ID: {orderId}
+              </p>
+            )}
+
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
               <button
                 onClick={() => router.push("/orders")}
@@ -574,6 +856,7 @@ export default function CheckoutPage() {
               >
                 View Orders
               </button>
+
               <button
                 onClick={() => router.push("/")}
                 className="px-4 py-2.5 sm:px-6 sm:py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm sm:text-base w-full sm:w-auto"
@@ -589,15 +872,18 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Hero Section - Responsive */}
+      {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-[#d87a6a]/10 via-white to-[#fcefe9] dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-8 sm:py-12 md:py-16 px-4">
         <div className="relative max-w-7xl mx-auto">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">
-              Secure Checkout
+              {activeStep === 1 ? "Shipping Information" : "Review & Pay"}
             </h1>
+
             <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base">
-              Complete your order with secure payment
+              {activeStep === 1
+                ? "Enter your shipping details to continue"
+                : "Review your order and complete payment"}
             </p>
           </div>
         </div>
@@ -605,12 +891,12 @@ export default function CheckoutPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
         <div className="max-w-6xl mx-auto">
-          {/* Progress Steps - Responsive */}
+          {/* Progress Steps */}
           <div className="mb-8 sm:mb-12 px-2">
-            <div className="flex items-center justify-center flex-wrap gap-4 sm:gap-0">
+            <div className="flex items-center justify-center max-w-md mx-auto">
               {steps.map((step, index) => (
-                <div key={step.id} className="flex items-center">
-                  <div className="hidden sm:flex items-center">
+                <div key={step.id} className="flex items-center flex-1">
+                  <div className="flex flex-col items-center flex-1">
                     <div
                       className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 ${
                         activeStep >= step.id
@@ -620,61 +906,55 @@ export default function CheckoutPage() {
                     >
                       {step.icon}
                     </div>
-                    <div className="ml-3 sm:ml-4">
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                        Step {step.id}
-                      </p>
-                      <p className="font-medium text-sm sm:text-base">
-                        {step.name}
-                      </p>
-                    </div>
-                    {index < steps.length - 1 && (
-                      <div
-                        className={`hidden sm:block h-0.5 w-8 sm:w-16 mx-2 sm:mx-4 ${
-                          activeStep > step.id
-                            ? "bg-[#d87a6a]"
-                            : "bg-gray-300 dark:bg-gray-700"
-                        }`}
-                      />
-                    )}
+
+                    <p className="text-xs sm:text-sm font-medium mt-2 text-gray-700 dark:text-gray-300">
+                      {step.name}
+                    </p>
                   </div>
 
-                  {/* Mobile step indicator */}
-                  <div className="sm:hidden flex flex-col items-center">
+                  {index < steps.length - 1 && (
                     <div
-                      className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-                        activeStep >= step.id
-                          ? "bg-[#d87a6a] border-[#d87a6a] text-white"
-                          : "border-gray-300 dark:border-gray-700"
+                      className={`flex-1 h-0.5 mx-2 ${
+                        activeStep > step.id
+                          ? "bg-[#d87a6a]"
+                          : "bg-gray-300 dark:bg-gray-700"
                       }`}
-                    >
-                      {step.icon}
-                    </div>
-                    <span className="text-xs mt-1">{step.name}</span>
-                  </div>
+                    />
+                  )}
                 </div>
               ))}
             </div>
           </div>
 
           <div className="grid lg:grid-cols-3 gap-6 sm:gap-8">
+            {/* =================================================
+                MAIN CONTENT
+            ================================================= */}
+
             <div className="lg:col-span-2">
               <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-lg sm:shadow-xl p-4 sm:p-6 md:p-8 mb-6 sm:mb-8">
+                {/* =============================================
+                    STEP 1
+                ============================================= */}
+
                 {activeStep === 1 && (
                   <div>
                     <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
                       Shipping Information
                     </h2>
+
                     <div className="mb-6 sm:mb-8 bg-gradient-to-r from-[#d87a6a]/5 to-[#c76a5a]/5 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                       <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
                         Contact Information
                       </h3>
+
                       <div className="grid md:grid-cols-2 gap-3 sm:gap-4">
                         <div>
                           <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2">
-                            <FiUser className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            <FiUser />
                             First Name *
                           </label>
+
                           <input
                             type="text"
                             name="firstName"
@@ -685,11 +965,13 @@ export default function CheckoutPage() {
                             required
                           />
                         </div>
+
                         <div>
                           <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2">
-                            <FiUser className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            <FiUser />
                             Last Name *
                           </label>
+
                           <input
                             type="text"
                             name="lastName"
@@ -700,11 +982,13 @@ export default function CheckoutPage() {
                             required
                           />
                         </div>
+
                         <div className="md:col-span-2">
                           <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2">
-                            <FiMail className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            <FiMail />
                             Email Address *
                           </label>
+
                           <input
                             type="email"
                             name="email"
@@ -714,11 +998,13 @@ export default function CheckoutPage() {
                             required
                           />
                         </div>
+
                         <div className="md:col-span-2">
                           <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2">
-                            <FiPhone className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            <FiPhone />
                             Phone Number *
                           </label>
+
                           <input
                             type="tel"
                             name="phone"
@@ -736,82 +1022,57 @@ export default function CheckoutPage() {
                       <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
                         Shipping Address
                       </h3>
+
                       <div className="grid md:grid-cols-2 gap-3 sm:gap-4">
                         <div className="md:col-span-2">
                           <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2">
-                            <FiMapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            <FiMapPin />
                             Region *
                           </label>
+
                           <select
                             name="regions"
                             value={formData.regions}
                             onChange={handleInputChange}
-                            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base border border-gray-300 dark:border-gray-700 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-[#d87a6a] focus:border-transparent"
+                            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base border border-gray-300 dark:border-gray-700 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-[#d87a6a] focus:border-transparent cursor-pointer"
                             required
                           >
-                            <option value="" className="text-black">
-                              Select Region
-                            </option>
-                            <option
-                              value="Greater Accra"
-                              className="text-black"
-                            >
-                              Greater Accra
-                            </option>
-                            <option value="Ashanti" className="text-black">
-                              Ashanti
-                            </option>
-                            <option value="Eastern" className="text-black">
-                              Eastern
-                            </option>
-                            <option value="Western" className="text-black">
-                              Western
-                            </option>
-                            <option value="Central" className="text-black">
-                              Central
-                            </option>
-                            <option value="Volta" className="text-black">
-                              Volta
-                            </option>
-                            <option value="Northern" className="text-black">
-                              Northern
-                            </option>
-                            <option value="Upper East" className="text-black">
-                              Upper East
-                            </option>
-                            <option value="Upper West" className="text-black">
-                              Upper West
-                            </option>
-                            <option value="Bono" className="text-black">
-                              Bono
-                            </option>
-                            <option value="Bono East" className="text-black">
-                              Bono East
-                            </option>
-                            <option value="Ahafo" className="text-black">
-                              Ahafo
-                            </option>
-                            <option value="Savannah" className="text-black">
-                              Savannah
-                            </option>
-                            <option value="North East" className="text-black">
-                              North East
-                            </option>
-                            <option value="Oti" className="text-black">
-                              Oti
-                            </option>
-                            <option
-                              value="Western North"
-                              className="text-black"
-                            >
-                              Western North
-                            </option>
+                            <option value="">Select Region</option>
+
+                            {[
+                              "Ahafo",
+                              "Ashanti",
+                              "Bono",
+                              "Bono East",
+                              "Central",
+                              "Eastern",
+                              "Greater Accra",
+                              "North East",
+                              "Northern",
+                              "Oti",
+                              "Savannah",
+                              "Upper East",
+                              "Upper West",
+                              "Volta",
+                              "Western",
+                              "Western North",
+                            ].map((region) => (
+                              <option
+                                key={region}
+                                value={region}
+                                className="text-black"
+                              >
+                                {region}
+                              </option>
+                            ))}
                           </select>
                         </div>
+
                         <div>
                           <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2">
                             City/Town *
                           </label>
+
                           <input
                             type="text"
                             name="city"
@@ -822,10 +1083,12 @@ export default function CheckoutPage() {
                             required
                           />
                         </div>
+
                         <div>
                           <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2">
                             Area/Locality *
                           </label>
+
                           <input
                             type="text"
                             name="locality"
@@ -836,10 +1099,12 @@ export default function CheckoutPage() {
                             required
                           />
                         </div>
+
                         <div className="md:col-span-2">
                           <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2">
-                            Detailed Address(optional)
+                            Detailed Address (optional)
                           </label>
+
                           <input
                             type="text"
                             name="address"
@@ -854,135 +1119,92 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
+                {/* =============================================
+                    STEP 2
+                ============================================= */}
+
                 {activeStep === 2 && (
                   <div>
                     <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
-                      Payment Method
-                    </h2>
-
-                    <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl sm:rounded-2xl border border-blue-200 dark:border-blue-800">
-                      <h3 className="font-semibold text-gray-900 dark:text-white mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base">
-                        <FiCreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-[#d87a6a]" />
-                        Secure Payment
-                      </h3>
-                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 sm:mb-4">
-                        Pay securely with card, mobile money, or bank transfer.
-                        All payments are processed through Paystack&apos;s
-                        secure payment gateway.
-                      </p>
-                      <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                        <span className="px-2 py-1 sm:px-3 sm:py-1 bg-white dark:bg-gray-800 text-xs font-medium rounded-full border">
-                          Visa/Mastercard
-                        </span>
-                        <span className="px-2 py-1 sm:px-3 sm:py-1 bg-white dark:bg-gray-800 text-xs font-medium rounded-full border">
-                          Mobile Money
-                        </span>
-                        <span className="px-2 py-1 sm:px-3 sm:py-1 bg-white dark:bg-gray-800 text-xs font-medium rounded-full border">
-                          Bank Transfer
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Security Badge */}
-                    <div className="flex items-start sm:items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg sm:rounded-xl border border-green-200 dark:border-green-800">
-                      <FiLock className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400 mt-0.5 sm:mt-0" />
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">
-                          Bank-Level Security
-                        </p>
-                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                          Your payment information is encrypted and secure
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {activeStep === 3 && (
-                  <div>
-                    <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
-                      Order Review
+                      Review & Pay
                     </h2>
 
                     <div className="space-y-4 sm:space-y-6">
-                      {/* Shipping Information */}
                       <div className="bg-gradient-to-r from-[#d87a6a]/5 to-[#c76a5a]/5 rounded-xl sm:rounded-2xl p-4 sm:p-6">
-                        <h3 className="font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 text-sm sm:text-base">
+                        <h3 className="font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
                           Shipping Information
                         </h3>
+
                         <div className="grid md:grid-cols-2 gap-3 sm:gap-4">
                           <div>
-                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
                               Name
                             </p>
-                            <p className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">
+                            <p className="font-medium">
                               {formData.firstName} {formData.lastName}
                             </p>
                           </div>
+
                           <div>
-                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
                               Email
                             </p>
-                            <p className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">
-                              {formData.email}
-                            </p>
+                            <p className="font-medium">{formData.email}</p>
                           </div>
+
                           <div>
-                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
                               Phone
                             </p>
-                            <p className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">
-                              {formData.phone}
-                            </p>
+                            <p className="font-medium">{formData.phone}</p>
                           </div>
+
                           <div>
-                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
                               Region
                             </p>
-                            <p className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">
-                              {formData.regions}
-                            </p>
+                            <p className="font-medium">{formData.regions}</p>
                           </div>
+
                           <div>
-                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
                               City
                             </p>
-                            <p className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">
-                              {formData.city}
-                            </p>
+                            <p className="font-medium">{formData.city}</p>
                           </div>
+
                           <div>
-                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
                               Area
                             </p>
-                            <p className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">
-                              {formData.locality}
-                            </p>
+                            <p className="font-medium">{formData.locality}</p>
                           </div>
                         </div>
                       </div>
 
-                      {/* Order Items */}
                       <div>
-                        <h3 className="font-semibold text-gray-900 dark:text-white mb-2 sm:mb-3 text-sm sm:text-base">
+                        <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
                           Order Items ({itemCount})
                         </h3>
-                        <div className="space-y-2 sm:space-y-3">
+
+                        <div className="space-y-3">
                           {cartItems.map((item) => (
                             <div
                               key={item.id}
-                              className="flex justify-between items-center bg-white dark:bg-gray-700 p-3 sm:p-4 rounded-lg sm:rounded-xl"
+                              className="flex justify-between items-center bg-white dark:bg-gray-700 p-4 rounded-xl"
                             >
-                              <div className="flex-1 pr-2">
-                                <p className="font-medium text-gray-900 dark:text-white text-sm sm:text-base line-clamp-1">
+                              <div>
+                                <p className="font-medium text-gray-900 dark:text-white">
                                   {item.name}
                                 </p>
-                                <p className="text-xs sm:text-sm text-gray-500">
+
+                                <p className="text-sm text-gray-500">
                                   Qty: {item.quantity} × ₵
                                   {item.price.toFixed(2)}
                                 </p>
                               </div>
-                              <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base whitespace-nowrap">
+
+                              <p className="font-semibold">
                                 ₵{(item.price * item.quantity).toFixed(2)}
                               </p>
                             </div>
@@ -993,51 +1215,55 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                {/* Navigation Buttons - Responsive */}
-                <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-0 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t">
-                  {activeStep > 1 ? (
+                {/* =============================================
+                    NAVIGATION
+                ============================================= */}
+
+                <div className="flex flex-col sm:flex-row justify-between gap-3 mt-6 pt-6 border-t">
+                  {activeStep === 2 ? (
                     <button
                       onClick={handlePreviousStep}
-                      className="flex items-center justify-center px-4 py-2.5 sm:px-6 sm:py-3 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white text-sm sm:text-base w-full sm:w-auto order-2 sm:order-1 cursor-pointer"
+                      disabled={processing}
+                      className="flex items-center justify-center px-4 py-3 text-gray-700 dark:text-gray-300 w-full sm:w-auto cursor-pointer disabled:opacity-50"
                     >
-                      <FiArrowLeft className="mr-2 w-4 h-4" />
-                      Back
+                      <FiArrowLeft className="mr-2" />
+                      Back to Shipping
                     </button>
                   ) : (
                     <button
                       onClick={() => router.push("/cart")}
-                      className="flex items-center justify-center px-4 py-2.5 sm:px-6 sm:py-3 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white text-sm sm:text-base w-full sm:w-auto order-2 sm:order-1 cursor-pointer"
+                      className="flex items-center justify-center px-4 py-3 text-gray-700 dark:text-gray-300 w-full sm:w-auto cursor-pointer"
                     >
-                      <FiArrowLeft className="mr-2 w-4 h-4" />
+                      <FiArrowLeft className="mr-2" />
                       Return to Cart
                     </button>
                   )}
 
-                  {activeStep < 3 ? (
+                  {activeStep === 1 ? (
                     <button
                       onClick={handleNextStep}
-                      className="px-4 py-2.5 sm:px-6 sm:py-3 bg-[#d87a6a] text-white rounded-lg sm:rounded-xl hover:bg-[#c76a5a] transition-colors font-medium text-sm sm:text-base w-full sm:w-auto order-1 sm:order-2 cursor-pointer"
+                      className="px-6 py-3 bg-[#d87a6a] text-white rounded-xl hover:bg-[#c76a5a] font-medium w-full sm:w-auto cursor-pointer"
                     >
-                      Continue to {activeStep === 1 ? "Payment" : "Review"}
+                      Review Order
                     </button>
                   ) : (
                     <button
                       onClick={handlePayment}
                       disabled={processing || !paystackLoaded}
-                      className="px-6 py-2.5 sm:px-8 sm:py-3 bg-gradient-to-r from-[#d87a6a] to-[#c76a5a] text-white rounded-lg sm:rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 sm:gap-3 font-medium text-sm sm:text-base shadow-lg w-full sm:w-auto order-1 sm:order-2"
+                      className="px-6 py-3 bg-gradient-to-r from-[#d87a6a] to-[#c76a5a] text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 font-medium shadow-lg w-full sm:w-auto cursor-pointer"
                     >
                       {processing ? (
                         <>
-                          <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          <span className="whitespace-nowrap">
-                            Processing...
-                          </span>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+
+                          <span>Processing...</span>
                         </>
                       ) : !paystackLoaded ? (
                         "Loading Gateway..."
                       ) : (
                         <>
-                          <FiLock className="w-4 h-4 sm:w-5 sm:h-5" />
+                          <FiLock />
+
                           <span>Pay ₵{finalTotal.toFixed(2)} Now</span>
                         </>
                       )}
@@ -1046,83 +1272,92 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center mt-4 sm:mt-0">
-                <FiLock className="mr-2 w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
+                <FiLock className="mr-2" />
                 Your payment information is secure and encrypted
               </div>
             </div>
 
-            {/* Order Summary Sidebar - Responsive */}
-            <div className="space-y-4 sm:space-y-6">
-              <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-lg sm:shadow-xl p-4 sm:p-6">
-                <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
+            {/* =================================================
+                ORDER SUMMARY
+            ================================================= */}
+
+            <div className="space-y-6">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
                   Order Summary
                 </h3>
 
-                <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6 max-h-60 sm:max-h-80 overflow-y-auto pr-2">
+                <div className="space-y-4 mb-6 max-h-80 overflow-y-auto pr-2">
                   {cartItems.map((item) => (
                     <div
                       key={item.id}
-                      className="flex justify-between items-center pb-3 sm:pb-4 border-b"
+                      className="flex justify-between items-center pb-4 border-b"
                     >
-                      <div className="flex-1 pr-2">
-                        <p className="font-medium text-gray-900 dark:text-white text-sm sm:text-base line-clamp-1">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">
                           {item.name}
                         </p>
-                        <p className="text-xs sm:text-sm text-gray-500">
+
+                        <p className="text-sm text-gray-500">
                           Qty: {item.quantity}
                         </p>
                       </div>
-                      <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base whitespace-nowrap">
+
+                      <p className="font-semibold">
                         ₵{(item.price * item.quantity).toFixed(2)}
                       </p>
                     </div>
                   ))}
                 </div>
 
-                <div className="space-y-2 sm:space-y-3 border-t pt-3 sm:pt-4">
+                <div className="space-y-3 border-t pt-4">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-400">
-                      Subtotal
-                    </span>
+                    <span>Subtotal</span>
+
                     <span className="font-medium">
                       ₵{totalPrice.toFixed(2)}
                     </span>
                   </div>
+
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-400">
-                      Shipping
-                    </span>
+                    <span>Shipping</span>
+
                     <span className="font-medium">
                       ₵{shippingFee.toFixed(2)}
                     </span>
                   </div>
 
-                  <div className="flex justify-between text-base sm:text-lg font-bold border-t pt-3 sm:pt-4">
+                  <div className="flex justify-between text-lg font-bold border-t pt-4">
                     <span>Total Amount</span>
-                    <span className="text-xl sm:text-2xl text-[#d87a6a]">
+
+                    <span className="text-2xl text-[#d87a6a]">
                       ₵{finalTotal.toFixed(2)}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Need Help - Responsive */}
-              <div className="bg-gradient-to-br from-[#d87a6a]/10 to-[#c76a5a]/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
-                <h4 className="font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 text-sm sm:text-base">
+              {/* Need Help */}
+
+              <div className="bg-gradient-to-br from-[#d87a6a]/10 to-[#c76a5a]/10 rounded-2xl p-6">
+                <h4 className="font-bold text-gray-900 dark:text-white mb-3">
                   Need Help?
                 </h4>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 sm:mb-4">
+
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                   If you encounter any issues with payment or have questions
                   about your order, please contact our support team.
                 </p>
-                <div className="space-y-1.5 sm:space-y-2">
-                  <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                    <FiMail className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    <span className="break-all">yussifhayate@icloud.com</span>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                    <FiMail />
+                    <span>yussifhayate@icloud.com</span>
                   </div>
-                  <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                    <FiPhone className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                    <FiPhone />
                     <span>0549188561</span>
                   </div>
                 </div>

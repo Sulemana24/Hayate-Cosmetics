@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/ToastProvider";
@@ -29,11 +29,16 @@ export default function NewProductPage() {
     category: "",
     subCategory: "",
     quantity: "",
-    status: "In Stock" as "In Stock" | "Low Stock" | "Out of Stock",
+    status: "Out of Stock" as "In Stock" | "Low Stock" | "Out of Stock",
     imageUrl: "",
   });
 
-  const productCategories = ["Skincare", "Fragrance", "Accessories"];
+  const productCategories = [
+    "Skincare",
+    "Fragrance",
+    "Accessories",
+    "Importation",
+  ];
   const subCategoriesMap: Record<string, string[]> = {
     Skincare: [
       "Cleanser",
@@ -42,17 +47,78 @@ export default function NewProductPage() {
       "Sunscreen",
       "Mask",
       "Lotion",
+      "Tonner",
+      "Body Wash",
+      "Collagen",
+      "Face Cream",
+      "Gummies",
+      "Cream",
+      "Body Oil",
+      "Face Oil",
+      "Others",
     ],
-    Fragrance: ["Perfume", "Body Mists", "Essential Oil", "Deodorant"],
-    Accessories: ["Tools", "Bags", "Gift Sets"],
+    Fragrance: [
+      "Perfume",
+      "Body Mists",
+      "Essential Oil",
+      "Deodorant",
+      "Others",
+    ],
+    Accessories: [
+      "Tools",
+      "Bags",
+      "Gift Sets",
+      "Slippers",
+      "Heels",
+      "Jewelry",
+      "Shoes",
+      "Others",
+    ],
+    Importation: [
+      "Clothes",
+      "Bags",
+      "Jewelry",
+      "Home Appliances",
+      "Electronics",
+      "Home Decor",
+      "Toys",
+      "General Goods",
+      "Others",
+    ],
   };
 
   const statusOptions = ["In Stock", "Low Stock", "Out of Stock"];
 
+  // Auto-update status based on quantity
+  useEffect(() => {
+    const quantityValue = parseInt(productForm.quantity);
+
+    if (
+      productForm.quantity === "" ||
+      isNaN(quantityValue) ||
+      quantityValue === 0
+    ) {
+      setProductForm((prev) => ({
+        ...prev,
+        status: "Out of Stock",
+      }));
+    } else if (quantityValue > 0 && quantityValue <= 5) {
+      setProductForm((prev) => ({
+        ...prev,
+        status: "Low Stock",
+      }));
+    } else if (quantityValue > 5) {
+      setProductForm((prev) => ({
+        ...prev,
+        status: "In Stock",
+      }));
+    }
+  }, [productForm.quantity]);
+
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const { name, value } = e.target;
 
@@ -106,7 +172,7 @@ export default function NewProductPage() {
 
         originalPrice: parseFloat(productForm.originalPrice),
         discountedPrice: parseFloat(productForm.discountedPrice),
-        quantity: parseInt(productForm.quantity),
+        quantity: parseInt(productForm.quantity) || 0,
         status: productForm.status,
         imageUrl: productForm.imageUrl || null,
 
@@ -441,7 +507,7 @@ export default function NewProductPage() {
                       {productForm.description ||
                         "Product description will appear here"}
                     </p>
-                    <div className="flex items-center gap-3 mt-2">
+                    <div className="flex items-center gap-3 mt-2 flex-wrap">
                       <div className="flex items-center gap-1">
                         {productForm.originalPrice && (
                           <span className="text-sm text-gray-400 line-through">
@@ -463,7 +529,7 @@ export default function NewProductPage() {
                       {productForm.status && (
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                            productForm.status
+                            productForm.status,
                           )}`}
                         >
                           {productForm.status}

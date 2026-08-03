@@ -11,7 +11,9 @@
   "dependencies": {
     "@uploadthing/react": "^7.3.3",
     "clsx": "^2.1.1",
+    "cookies-next": "^6.1.1",
     "firebase": "^12.6.0",
+    "firebase-admin": "^14.2.0",
     "next": "16.0.8",
     "nodemailer": "^7.0.12",
     "react": "19.2.1",
@@ -28,6 +30,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.23",
+    "baseline-browser-mapping": "^2.11.8",
     "eslint": "^9",
     "eslint-config-next": "16.0.8",
     "postcss": "^8.5.6",

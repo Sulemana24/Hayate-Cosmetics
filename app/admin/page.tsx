@@ -1,4 +1,5 @@
 "use client";
+
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -18,8 +19,9 @@ import {
   FaEnvelope,
   FaArrowRight,
   FaUser,
+  FaShieldAlt,
 } from "react-icons/fa";
-
+import { setCookie } from "cookies-next";
 import Logo from "../../public/images/comlogo.png";
 
 type AuthMode = "login" | "signup";
@@ -55,24 +57,28 @@ export default function AdminAuthPage() {
     setLoading(true);
 
     try {
+      const email = formData.email.toLowerCase().trim();
+
+      // Check if email is allowed BEFORE any other operation
+      if (!allowedAdmins.includes(email)) {
+        showToast({
+          message:
+            "Access Denied: This email is not authorized for admin access.",
+          type: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
       if (mode === "signup") {
-        const email = formData.email.toLowerCase().trim();
-
-        if (!allowedAdmins.includes(email)) {
-          showToast({
-            message: "This email is not authorized to create an admin account.",
-            type: "error",
-          });
-          setLoading(false);
-          return;
-        }
-
+        // Validate password match
         if (formData.password !== formData.confirmPassword) {
           showToast({ message: "Passwords do not match", type: "error" });
           setLoading(false);
           return;
         }
 
+        // Validate terms agreement
         if (!formData.agreeToTerms) {
           showToast({
             message: "You must confirm admin authorization",
@@ -82,50 +88,88 @@ export default function AdminAuthPage() {
           return;
         }
 
+        // Create the admin account
         const res = await createUserWithEmailAndPassword(
           auth,
           email,
-          formData.password
+          formData.password,
         );
 
+        // Save admin details to Firestore
         await setDoc(doc(db, "users", res.user.uid), {
           fullName: formData.fullName,
           email,
           role: "admin",
           createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+
+        setCookie("admin_session", res.user.uid, {
+          maxAge: 60 * 60 * 24 * 7,
+          path: "/",
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
         });
 
         showToast({
           message: "Admin account created successfully!",
           type: "success",
         });
+
         router.push("/admin/dashboard");
       }
 
       if (mode === "login") {
+        // Attempt login
         const res = await signInWithEmailAndPassword(
           auth,
-          formData.email,
-          formData.password
+          email,
+          formData.password,
         );
 
-        const email = res.user.email?.toLowerCase().trim();
-
-        if (!email || !allowedAdmins.includes(email)) {
+        // Double-check the email is still in allowed list (defense in depth)
+        const userEmail = res.user.email?.toLowerCase().trim();
+        if (!userEmail || !allowedAdmins.includes(userEmail)) {
           await auth.signOut();
-          showToast({ message: "Access denied. Not an admin.", type: "error" });
+          showToast({
+            message: "Access Denied: You are not authorized as an admin.",
+            type: "error",
+          });
           setLoading(false);
           return;
         }
 
+        setCookie("admin_session", res.user.uid, {
+          maxAge: 60 * 60 * 24 * 7,
+          path: "/",
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+        });
+
         showToast({ message: "Login successful!", type: "success" });
+
         router.push("/admin/dashboard");
       }
     } catch (error: unknown) {
       let message = "An unexpected error occurred";
 
       if (error instanceof FirebaseError) {
-        message = error.message || error.code;
+        switch (error.code) {
+          case "auth/email-already-in-use":
+            message = "This email is already registered. Please login instead.";
+            break;
+          case "auth/user-not-found":
+            message = "No account found with this email.";
+            break;
+          case "auth/wrong-password":
+            message = "Incorrect password. Please try again.";
+            break;
+          case "auth/too-many-requests":
+            message = "Too many failed attempts. Please try again later.";
+            break;
+          default:
+            message = error.message || error.code;
+        }
       } else if (error instanceof Error) {
         message = error.message;
       }
@@ -144,12 +188,19 @@ export default function AdminAuthPage() {
     });
   };
 
-  const handleForgotPassword = () => {
-    showToast({ message: "Forgot password clicked", type: "info" });
-  };
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#faf7f5] to-[#f0ece9] dark:from-gray-900 dark:to-gray-800 p-4">
       <div className="w-full max-w-md">
+        {/* Security Badge */}
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 rounded-full">
+            <FaShieldAlt className="w-4 h-4 text-green-600 dark:text-green-400" />
+            <span className="text-xs font-medium text-green-700 dark:text-green-300">
+              Restricted Access
+            </span>
+          </div>
+        </div>
+
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-[#e39a89] rounded-2xl shadow-lg mb-4 p-4">
             <Image
@@ -169,6 +220,11 @@ export default function AdminAuthPage() {
               ? "Sign in to your admin account"
               : "Setup your admin credentials"}
           </p>
+          {mode === "signup" && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              ⚠️ Only authorized emails can create admin accounts
+            </p>
+          )}
         </div>
 
         {/* Auth Card */}
@@ -241,6 +297,11 @@ export default function AdminAuthPage() {
                   required
                 />
               </div>
+              {mode === "signup" && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Only authorized emails can create accounts
+                </p>
+              )}
             </div>
 
             {/* Password */}
@@ -261,9 +322,10 @@ export default function AdminAuthPage() {
                   placeholder={
                     mode === "login"
                       ? "Enter your password"
-                      : "Create a password"
+                      : "Create a password (min 6 characters)"
                   }
                   required
+                  minLength={6}
                 />
                 <button
                   type="button"
@@ -337,13 +399,6 @@ export default function AdminAuthPage() {
                       Remember this device
                     </label>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleForgotPassword}
-                    className="text-sm text-[#1b3c35] hover:text-[#2a4d45] dark:text-[#e39a89] dark:hover:text-[#d87a6a] font-medium transition-colors focus:outline-none focus:underline cursor-pointer"
-                  >
-                    Forgot password?
-                  </button>
                 </div>
               ) : (
                 <div className="flex items-start">
@@ -379,8 +434,8 @@ export default function AdminAuthPage() {
               {loading
                 ? "Processing..."
                 : mode === "login"
-                ? "Sign In"
-                : "Create Account"}
+                  ? "Sign In"
+                  : "Create Account"}
               {!loading && <FaArrowRight className="w-4 h-4" />}
             </button>
           </form>
@@ -389,6 +444,9 @@ export default function AdminAuthPage() {
         <div className="text-center mt-8">
           <p className="text-sm text-gray-600 dark:text-gray-400">
             © {new Date().getFullYear()} Admin Portal. All rights reserved.
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+            🔒 Restricted access - Authorized personnel only
           </p>
         </div>
       </div>

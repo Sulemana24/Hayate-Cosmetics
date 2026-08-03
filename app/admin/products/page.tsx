@@ -65,7 +65,7 @@ export default function ProductsPage() {
       try {
         const q = query(
           collection(db, "products"),
-          orderBy("createdAt", "desc")
+          orderBy("createdAt", "desc"),
         );
         const snapshot = await getDocs(q);
         const items = snapshot.docs.map((doc) => ({
@@ -90,7 +90,7 @@ export default function ProductsPage() {
   const handleDelete = async (id: string, name: string) => {
     if (
       !confirm(
-        `Are you sure you want to delete "${name}"? This action cannot be undone.`
+        `Are you sure you want to delete "${name}"? This action cannot be undone.`,
       )
     ) {
       return;
@@ -149,7 +149,7 @@ export default function ProductsPage() {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentProducts = sortedProducts.slice(
     indexOfFirstItem,
-    indexOfLastItem
+    indexOfLastItem,
   );
 
   // Get status color
@@ -173,7 +173,7 @@ export default function ProductsPage() {
   const averagePrice = products.length
     ? Math.round(
         products.reduce((sum, p) => sum + p.discountedPrice, 0) /
-          products.length
+          products.length,
       )
     : 0;
 
@@ -398,7 +398,7 @@ export default function ProductsPage() {
                                   const target = e.target as HTMLImageElement;
                                   target.style.display = "none";
                                   const fallback = document.getElementById(
-                                    `fallback-${product.id}`
+                                    `fallback-${product.id}`,
                                   );
                                   if (fallback) fallback.style.display = "flex";
                                 }}
@@ -438,7 +438,7 @@ export default function ProductsPage() {
                                     ((product.originalPrice -
                                       product.discountedPrice) /
                                       product.originalPrice) *
-                                      100
+                                      100,
                                   )}
                                   %
                                 </span>
@@ -485,7 +485,7 @@ export default function ProductsPage() {
                     <td className="py-4">
                       <span
                         className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                          product.status
+                          product.status,
                         )}`}
                       >
                         {product.status}

@@ -119,7 +119,7 @@ export default function OrdersPage() {
   const handleDelete = async (id: string, orderNumber: string) => {
     if (
       !confirm(
-        `Are you sure you want to delete order "${orderNumber}"? This action cannot be undone.`
+        `Are you sure you want to delete order "${orderNumber}"? This action cannot be undone.`,
       )
     ) {
       return;
@@ -153,8 +153,8 @@ export default function OrdersPage() {
 
       setOrders(
         orders.map((order) =>
-          order.id === id ? { ...order, status: newStatus } : order
-        )
+          order.id === id ? { ...order, status: newStatus } : order,
+        ),
       );
     } catch (error) {
       showToast({
@@ -283,7 +283,7 @@ export default function OrdersPage() {
   const deliveredOrders = orders.filter((o) => o.status === "delivered").length;
   const totalRevenue = orders.reduce(
     (sum, order) => sum + order.totalAmount,
-    0
+    0,
   );
 
   const hasActiveFilters =
@@ -621,7 +621,7 @@ export default function OrdersPage() {
                             </div>
                             <div
                               className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getPaymentStatusColor(
-                                order.paymentStatus
+                                order.paymentStatus,
                               )}`}
                             >
                               {order.paymentStatus.charAt(0).toUpperCase() +
@@ -684,13 +684,6 @@ export default function OrdersPage() {
                               title="View Details"
                             >
                               <FiEye className="w-4 h-4" />
-                            </Link>
-                            <Link
-                              href={`/admin/orders/${order.id}/edit`}
-                              className="p-2 text-yellow-600 hover:bg-yellow-50 dark:text-yellow-400 dark:hover:bg-yellow-900/30 rounded-lg transition-colors duration-200"
-                              title="Edit Order"
-                            >
-                              <FiEdit className="w-4 h-4" />
                             </Link>
 
                             <button

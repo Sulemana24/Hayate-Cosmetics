@@ -15,6 +15,7 @@ import {
   where,
   orderBy,
   limit,
+  startAfter,
 } from "firebase/firestore";
 import Image from "next/image";
 import {
@@ -23,6 +24,7 @@ import {
   FiChevronRight,
   FiTrendingUp,
   FiGift,
+  FiLoader,
 } from "react-icons/fi";
 import Link from "next/link";
 
@@ -40,18 +42,86 @@ interface Product {
   discountPercentage: number;
 }
 
+/**
+ * Design tokens (see design notes at bottom of file for rationale):
+ * ink      #1b3c35  – deep botanical green, headings / dark surfaces
+ * cream    #FBF6EF  – warm base, replaces stark white/gray
+ * clay     #E39A89  – accent, CTAs, discount/price highlights
+ * sage     #8FA593  – secondary accent, dividers, muted UI
+ * charcoal #26261F  – body text
+ */
+
+// Small reusable "eyebrow" label — gives each section a consistent
+// hand-set feel instead of a plain heading floating alone.
+function SectionEyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-2 text-xs font-semibold tracking-[0.2em] uppercase text-[#8FA593] dark:text-[#a9c2ae] mb-3">
+      <span className="h-px w-6 bg-[#8FA593] dark:bg-[#a9c2ae]" />
+      {children}
+    </span>
+  );
+}
+
+// Botanical divider used between major sections instead of a hard edge —
+// this is the page's one recurring signature element.
+function LeafDivider() {
+  return (
+    <div className="flex items-center justify-center py-2" aria-hidden="true">
+      <div className="h-px w-16 bg-[#1b3c35]/15 dark:bg-white/10" />
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 18 18"
+        fill="none"
+        className="mx-3 text-[#8FA593] dark:text-[#a9c2ae]"
+      >
+        <path
+          d="M9 1C9 1 3 5 3 10a6 6 0 0012 0c0-5-6-9-6-9z"
+          stroke="currentColor"
+          strokeWidth="1.3"
+        />
+        <path d="M9 4v11" stroke="currentColor" strokeWidth="1.3" />
+      </svg>
+      <div className="h-px w-16 bg-[#1b3c35]/15 dark:bg-white/10" />
+    </div>
+  );
+}
+
+function CardSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="bg-[#1b3c35]/[0.06] dark:bg-white/[0.06] aspect-square rounded-2xl mb-3" />
+      <div className="h-4 bg-[#1b3c35]/[0.08] dark:bg-white/[0.08] rounded mb-2 w-4/5" />
+      <div className="h-3 bg-[#1b3c35]/[0.06] dark:bg-white/[0.06] rounded w-2/5" />
+    </div>
+  );
+}
+
+function EmptyState({ label }: { label: string }) {
+  return (
+    <div className="text-center py-16 bg-[#1b3c35]/[0.03] dark:bg-white/[0.03] rounded-2xl border border-dashed border-[#1b3c35]/15 dark:border-white/15">
+      <p className="text-[#26261F]/60 dark:text-white/60">{label}</p>
+    </div>
+  );
+}
+
 export default function Home() {
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
   const [bestSellers, setBestSellers] = useState<Product[]>([]);
   const [specialOffers, setSpecialOffers] = useState<Product[]>([]);
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState({
     newArrivals: true,
     bestSellers: true,
     specialOffers: true,
+    featured: true,
     categories: true,
   });
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [featuredLimit, setFeaturedLimit] = useState(8);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreFeatured, setHasMoreFeatured] = useState(true);
 
   useEffect(() => {
     const fetchNewArrivals = async () => {
@@ -106,7 +176,6 @@ export default function Home() {
     fetchBestSellers();
   }, []);
 
-  // Fetch Special Offers
   useEffect(() => {
     const fetchSpecialOffers = async () => {
       try {
@@ -128,7 +197,7 @@ export default function Home() {
         }) as Product[];
 
         const discountedProducts = products.filter(
-          (p) => p.discountPercentage > 5
+          (p) => p.discountPercentage > 5,
         );
         setSpecialOffers(discountedProducts.slice(0, 6));
       } catch (error) {
@@ -141,7 +210,41 @@ export default function Home() {
     fetchSpecialOffers();
   }, []);
 
-  // Auto slide for new arrivals
+  // Fetch Featured Products with pagination
+  useEffect(() => {
+    const fetchFeatured = async () => {
+      try {
+        const productsRef = collection(db, "products");
+        const q = query(
+          productsRef,
+          orderBy("createdAt", "desc"),
+          limit(featuredLimit),
+        );
+        const snapshot = await getDocs(q);
+        const products = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Product[];
+
+        setFeaturedProducts(products);
+        setHasMoreFeatured(products.length === featuredLimit);
+      } catch (error) {
+        console.error("Error fetching featured products:", error);
+      } finally {
+        setLoading((prev) => ({ ...prev, featured: false }));
+      }
+    };
+
+    fetchFeatured();
+  }, [featuredLimit]);
+
+  const loadMoreFeatured = async () => {
+    setIsLoadingMore(true);
+    const newLimit = featuredLimit + 8;
+    setFeaturedLimit(newLimit);
+    setIsLoadingMore(false);
+  };
+
   useEffect(() => {
     if (newArrivals.length === 0) return;
 
@@ -150,6 +253,7 @@ export default function Home() {
     }, 5000);
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newArrivals.length, currentSlide]);
 
   const handleNextSlide = () => {
@@ -166,7 +270,7 @@ export default function Home() {
       setCurrentSlide(
         (prev) =>
           (prev - 1 + Math.ceil(newArrivals.length / 4)) %
-          Math.ceil(newArrivals.length / 4)
+          Math.ceil(newArrivals.length / 4),
       );
       setIsTransitioning(false);
     }, 300);
@@ -186,96 +290,92 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#FBF6EF] dark:bg-[#0f1e1a]">
       <ClientNavbar />
       <HeroSection />
-      <section className="py-16 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center mb-8">
+
+      {/* New Arrivals */}
+      <section className="py-14 md:py-20">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="flex flex-wrap justify-between items-end gap-4 mb-10">
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-[#1b3c35] dark:text-white mb-2">
+              <SectionEyebrow>Just landed</SectionEyebrow>
+              <h2 className="text-3xl md:text-4xl font-bold text-[#1b3c35] dark:text-white tracking-tight">
                 New Arrivals
               </h2>
-              <p className="text-gray-600 dark:text-gray-400">
-                Fresh beauty products just for you
+              <p className="text-[#26261F]/60 dark:text-white/60 mt-1">
+                Fresh beauty products, restocked weekly
               </p>
             </div>
-            {/*  <Link
+            <Link
               href="/new-arrivals"
-              className="flex items-center gap-2 text-[#e39a89] hover:text-[#d87a6a] font-semibold transition-colors"
+              className="inline-flex items-center gap-2 text-[#c9614d] dark:text-[#E39A89] font-semibold transition-all hover:gap-3 hover:text-[#b84d3a] dark:hover:text-[#d48776]"
             >
-              View All <FiArrowRight />
-            </Link> */}
+              View All <FiArrowRight className="transition-transform" />
+            </Link>
           </div>
 
           {loading.newArrivals ? (
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="bg-gray-200 dark:bg-gray-700 h-64 rounded-xl mb-3"></div>
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
-                </div>
+                <CardSkeleton key={i} />
               ))}
             </div>
           ) : newArrivals.length > 0 ? (
             <div className="relative">
               <button
                 onClick={handlePrevSlide}
-                className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white dark:bg-gray-800 p-3 rounded-full shadow-lg hover:scale-105"
+                className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-5 z-10 items-center justify-center w-11 h-11 bg-white dark:bg-[#16302a] text-[#1b3c35] dark:text-white rounded-full shadow-md ring-1 ring-black/5 hover:shadow-lg hover:scale-105 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E39A89]"
                 aria-label="Previous slide"
               >
-                <FiChevronLeft className="w-6 h-6" />
+                <FiChevronLeft className="w-5 h-5" />
               </button>
 
               <button
                 onClick={handleNextSlide}
-                className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white dark:bg-gray-800 p-3 rounded-full shadow-lg hover:scale-105"
+                className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-5 z-10 items-center justify-center w-11 h-11 bg-white dark:bg-[#16302a] text-[#1b3c35] dark:text-white rounded-full shadow-md ring-1 ring-black/5 hover:shadow-lg hover:scale-105 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E39A89]"
                 aria-label="Next slide"
               >
-                <FiChevronRight className="w-6 h-6" />
+                <FiChevronRight className="w-5 h-5" />
               </button>
 
-              <div className="overflow-x-auto lg:overflow-hidden">
+              <div className="overflow-x-auto lg:overflow-hidden -mx-1 px-1">
                 <div
                   className={`transition-all duration-300 ease-in-out ${
-                    isTransitioning ? "opacity-50" : "opacity-100"
+                    isTransitioning ? "opacity-40" : "opacity-100"
                   }`}
                 >
-                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
                     {getCurrentSlideProducts().map((product) => (
                       <Link
                         key={product.id}
                         href={`/product/${product.id}`}
-                        className="group bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                        className="group bg-white dark:bg-[#16302a] rounded-2xl p-3 sm:p-4 ring-1 ring-black/5 dark:ring-white/5 hover:ring-[#E39A89]/40 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
                       >
-                        <div className="relative aspect-square overflow-hidden rounded-xl mb-4">
+                        <div className="relative aspect-square overflow-hidden rounded-xl mb-4 bg-[#1b3c35]/5">
                           <Image
                             src={product.imageUrl || "/api/placeholder/400/400"}
                             alt={product.name}
                             width={400}
                             height={400}
-                            className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                            className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
                           />
-                          <div className="absolute top-2 left-2 bg-[#e39a89] text-white px-3 py-1 rounded-full text-xs font-bold">
+                          <div className="absolute top-2.5 left-2.5 bg-[#1b3c35] text-white px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider">
                             NEW
                           </div>
                         </div>
-                        <h3 className="font-semibold text-gray-900 dark:text-white mb-1 truncate">
+                        <h3 className="font-semibold text-[#1b3c35] dark:text-white mb-1 truncate">
                           {product.name}
                         </h3>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-bold text-[#1b3c35] dark:text-white">
-                              ₵{product.discountedPrice.toFixed(2)}
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-bold text-[#1b3c35] dark:text-white">
+                            ₵{product.discountedPrice.toFixed(2)}
+                          </span>
+                          {product.originalPrice > product.discountedPrice && (
+                            <span className="text-sm line-through text-[#26261F]/35 dark:text-white/35">
+                              ₵{product.originalPrice.toFixed(2)}
                             </span>
-                            {product.originalPrice >
-                              product.discountedPrice && (
-                              <span className="text-sm line-through text-gray-400">
-                                ₵{product.originalPrice.toFixed(2)}
-                              </span>
-                            )}
-                          </div>
+                          )}
                         </div>
                       </Link>
                     ))}
@@ -283,16 +383,15 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Slider Dots */}
-              <div className="flex justify-center gap-2 mt-8">
+              <div className="flex justify-center gap-2 mt-9">
                 {[...Array(Math.ceil(newArrivals.length / 4))].map((_, i) => (
                   <button
                     key={i}
                     onClick={() => goToSlide(i)}
-                    className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                    className={`h-2 rounded-full transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E39A89] ${
                       i === currentSlide
-                        ? "w-8 bg-[#e39a89]"
-                        : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400"
+                        ? "w-8 bg-[#E39A89]"
+                        : "w-2 bg-[#1b3c35]/15 dark:bg-white/20 hover:bg-[#1b3c35]/30"
                     }`}
                     aria-label={`Go to slide ${i + 1}`}
                   />
@@ -300,94 +399,170 @@ export default function Home() {
               </div>
             </div>
           ) : (
-            <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-2xl">
-              <p className="text-gray-600 dark:text-gray-400">
-                No new arrivals available
-              </p>
-            </div>
+            <EmptyState label="No new arrivals yet — check back soon." />
           )}
         </div>
       </section>
 
-      {/* Featured Products */}
-      <section className="py-16 bg-gradient-to-b from-gray-50 to-white dark:from-gray-800 dark:to-gray-900">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-[#1b3c35] dark:text-white mb-4">
-              Featured Products
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-              Discover our curated selection of premium beauty products
-            </p>
-          </div>
-          <ProductsGrid limitCount={8} showFilters={true} />
-        </div>
-      </section>
+      <LeafDivider />
 
-      {/* Special Offers */}
-      <section className="py-16 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center gap-3 mb-8">
-            <FiGift className="w-8 h-8 text-red-500" />
+      {/* Featured Products */}
+      <section className="py-14 md:py-20">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="flex flex-wrap justify-between items-end gap-4 mb-10">
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-[#1b3c35] dark:text-white">
-                Special Offers
+              <SectionEyebrow>Curated for you</SectionEyebrow>
+              <h2 className="text-3xl md:text-4xl font-bold text-[#1b3c35] dark:text-white tracking-tight">
+                Featured Products
               </h2>
-              <p className="text-gray-600 dark:text-gray-400">
-                Don&apos;t miss these amazing deals
+              <p className="text-[#26261F]/60 dark:text-white/60 mt-1">
+                A selection of our premium beauty essentials
               </p>
             </div>
             <Link
-              href="/special-offers"
-              className="ml-auto flex items-center gap-2 text-[#e39a89] hover:text-[#d87a6a] font-semibold transition-colors"
+              href="/category/all"
+              className="inline-flex items-center gap-2 text-[#c9614d] dark:text-[#E39A89] font-semibold transition-all hover:gap-3 hover:text-[#b84d3a] dark:hover:text-[#d48776]"
             >
-              View All <FiArrowRight />
+              View All <FiArrowRight className="transition-transform" />
             </Link>
           </div>
 
-          {loading.specialOffers ? (
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="bg-gray-200 dark:bg-gray-700 h-48 rounded-xl mb-3"></div>
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
-                </div>
+          {loading.featured ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+              {[...Array(8)].map((_, i) => (
+                <CardSkeleton key={i} />
               ))}
             </div>
-          ) : specialOffers.length > 0 ? (
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
-              {specialOffers.map((product) => (
+          ) : featuredProducts.length > 0 ? (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+                {featuredProducts.map((product) => (
+                  <Link
+                    key={product.id}
+                    href={`/product/${product.id}`}
+                    className="group bg-white dark:bg-[#16302a] rounded-2xl p-3 sm:p-4 ring-1 ring-black/5 dark:ring-white/5 hover:ring-[#E39A89]/40 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                  >
+                    <div className="relative aspect-square overflow-hidden rounded-xl mb-4 bg-[#1b3c35]/5">
+                      <Image
+                        src={product.imageUrl || "/api/placeholder/400/400"}
+                        alt={product.name}
+                        width={400}
+                        height={400}
+                        className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+                      />
+                      {product.discountPercentage > 0 && (
+                        <div className="absolute top-2.5 right-2.5 bg-[#E39A89] text-white px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider">
+                          -{product.discountPercentage}%
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="font-semibold text-[#1b3c35] dark:text-white mb-1 truncate">
+                      {product.name}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-bold text-[#1b3c35] dark:text-white">
+                        ₵{product.discountedPrice.toFixed(2)}
+                      </span>
+                      {product.originalPrice > product.discountedPrice && (
+                        <span className="text-sm line-through text-[#26261F]/35 dark:text-white/35">
+                          ₵{product.originalPrice.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+
+              {hasMoreFeatured && (
+                <div className="flex justify-center mt-10">
+                  <button
+                    onClick={loadMoreFeatured}
+                    disabled={isLoadingMore}
+                    className="inline-flex items-center gap-2 px-8 py-3 bg-white dark:bg-[#16302a] text-[#1b3c35] dark:text-white font-semibold rounded-xl ring-1 ring-[#1b3c35]/15 dark:ring-white/15 hover:ring-[#E39A89]/50 hover:shadow-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {isLoadingMore ? (
+                      <>
+                        <FiLoader className="w-5 h-5 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        Load More
+                        <FiArrowRight className="transition-transform group-hover:translate-x-1" />
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <EmptyState label="No featured products available yet." />
+          )}
+        </div>
+      </section>
+
+      <LeafDivider />
+
+      {/* Best Sellers */}
+      <section className="py-14 md:py-20">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="flex flex-wrap items-end gap-4 mb-10">
+            <div className="flex items-start gap-3">
+              <div className="hidden sm:flex items-center justify-center w-11 h-11 rounded-full bg-[#8FA593]/15 text-[#4d6b56] dark:text-[#a9c2ae] shrink-0">
+                <FiTrendingUp className="w-5 h-5" />
+              </div>
+              <div>
+                <SectionEyebrow>Customer favorites</SectionEyebrow>
+                <h2 className="text-3xl md:text-4xl font-bold text-[#1b3c35] dark:text-white tracking-tight">
+                  Best Sellers
+                </h2>
+                <p className="text-[#26261F]/60 dark:text-white/60 mt-1">
+                  Our most loved beauty products
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/best-sellers"
+              className="ml-auto flex items-center gap-1.5 text-[#c9614d] dark:text-[#E39A89] font-semibold transition-colors hover:gap-2.5"
+            >
+              View all <FiArrowRight />
+            </Link>
+          </div>
+
+          {loading.bestSellers ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+              {[...Array(8)].map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
+            </div>
+          ) : bestSellers.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+              {bestSellers.slice(0, 8).map((product) => (
                 <Link
                   key={product.id}
                   href={`/product/${product.id}`}
-                  className="group bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-transparent hover:border-[#e39a89]/20"
+                  className="group bg-white dark:bg-[#16302a] rounded-2xl p-3 sm:p-4 ring-1 ring-black/5 dark:ring-white/5 hover:ring-[#E39A89]/40 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
                 >
-                  <div className="relative aspect-square overflow-hidden rounded-xl mb-4">
+                  <div className="relative aspect-square overflow-hidden rounded-xl mb-4 bg-[#1b3c35]/5">
                     <Image
                       src={product.imageUrl || "/api/placeholder/400/400"}
                       alt={product.name}
                       width={400}
                       height={400}
-                      className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                      className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute top-2 right-2 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                      -{product.discountPercentage}%
+                    <div className="absolute top-2.5 left-2.5 bg-[#8FA593] text-white px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider">
+                      TOP
                     </div>
                   </div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-1">
+                  <h3 className="font-semibold text-[#1b3c35] dark:text-white mb-2 truncate">
                     {product.name}
                   </h3>
-                  <div className="flex flex-col md:flex-row items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl font-bold text-[#1b3c35] dark:text-white">
-                        ₵{product.discountedPrice.toFixed(2)}
-                      </span>
-                      <span className="text-sm line-through text-gray-400">
-                        ₵{product.originalPrice.toFixed(2)}
-                      </span>
-                    </div>
-                    <span className="text-sm text-red-500 font-medium">
+                  <div className="flex flex-wrap items-center justify-between gap-y-1">
+                    <span className="text-lg font-bold text-[#1b3c35] dark:text-white">
+                      ₵{product.discountedPrice.toFixed(2)}
+                    </span>
+                    <span className="text-xs sm:text-sm text-[#c9614d] dark:text-[#E39A89] font-medium">
                       Save ₵
                       {(
                         product.originalPrice - product.discountedPrice
@@ -398,91 +573,7 @@ export default function Home() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-2xl">
-              <p className="text-gray-600 dark:text-gray-400">
-                No special offers available
-              </p>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Best Sellers */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center gap-3 mb-8">
-            <FiTrendingUp className="w-8 h-8 text-green-500" />
-            <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-[#1b3c35] dark:text-white">
-                Best Sellers
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400">
-                Our most loved beauty products
-              </p>
-            </div>
-            <Link
-              href="/best-sellers"
-              className="ml-auto flex items-center gap-2 text-[#e39a89] hover:text-[#d87a6a] font-semibold transition-colors"
-            >
-              View All <FiArrowRight />
-            </Link>
-          </div>
-
-          {loading.bestSellers ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="bg-gray-200 dark:bg-gray-700 h-64 rounded-xl mb-3"></div>
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
-                </div>
-              ))}
-            </div>
-          ) : bestSellers.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {bestSellers.slice(0, 8).map((product) => (
-                <Link
-                  key={product.id}
-                  href={`/product/${product.id}`}
-                  className="group bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-                >
-                  <div className="relative aspect-square overflow-hidden rounded-xl mb-4">
-                    <Image
-                      src={product.imageUrl || "/api/placeholder/400/400"}
-                      alt={product.name}
-                      width={400}
-                      height={400}
-                      className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute top-2 left-2 bg-yellow-500 text-white px-3 py-1 rounded-full text-xs font-bold">
-                      TOP
-                    </div>
-                  </div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2 truncate">
-                    {product.name}
-                  </h3>
-                  <div className="flex flex-col md:flex-row items-center justify-between">
-                    <span className="text-lg font-bold text-[#1b3c35] dark:text-white">
-                      ₵{product.discountedPrice.toFixed(2)}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm text-red-500 font-medium">
-                        Save ₵
-                        {(
-                          product.originalPrice - product.discountedPrice
-                        ).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-2xl">
-              <p className="text-gray-600 dark:text-gray-400">
-                No best sellers available
-              </p>
-            </div>
+            <EmptyState label="No best sellers available yet." />
           )}
         </div>
       </section>

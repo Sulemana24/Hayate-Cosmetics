@@ -50,7 +50,7 @@ export default function ClientNavbar() {
     { name: "Contact", href: "/contact" },
   ];
 
-  const categories = ["Skincare", "Fragrance", "Accessories"];
+  const categories = ["Skincare", "Fragrance", "Accessories", "Importation"];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -164,7 +164,7 @@ export default function ClientNavbar() {
                         {categories.map((category) => (
                           <Link
                             key={category}
-                            href={`/categories/${category.toLowerCase()}`}
+                            href={`/category/${category.toLowerCase()}`}
                             onClick={() => setIsCategoriesOpen(false)}
                             className="block px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 first:rounded-t-xl last:rounded-b-xl"
                           >

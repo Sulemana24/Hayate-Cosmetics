@@ -63,9 +63,44 @@ export default function EditProductPage() {
       "Sunscreen",
       "Mask",
       "Lotion",
+      "Tonner",
+      "Body Wash",
+      "Collagen",
+      "Face Cream",
+      "Gummies",
+      "Cream",
+      "Body Oil",
+      "Face Oil",
+      "Others",
     ],
-    Fragrance: ["Perfume", "Body Mists", "Essential Oil", "Deodorant"],
-    Accessories: ["Tools", "Bags", "Gift Sets"],
+    Fragrance: [
+      "Perfume",
+      "Body Mists",
+      "Essential Oil",
+      "Deodorant",
+      "Others",
+    ],
+    Accessories: [
+      "Tools",
+      "Bags",
+      "Gift Sets",
+      "Slippers",
+      "Heels",
+      "Jewelry",
+      "Shoes",
+      "Others",
+    ],
+    Importation: [
+      "Clothes",
+      "Bags",
+      "Jewelry",
+      "Home Appliances",
+      "Electronics",
+      "Home Decor",
+      "Toys",
+      "General Goods",
+      "Others",
+    ],
   };
   const statusOptions = ["In Stock", "Low Stock", "Out of Stock"];
 
@@ -117,7 +152,7 @@ export default function EditProductPage() {
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const { name, value } = e.target;
     setProductForm((prev) => ({
@@ -591,7 +626,7 @@ export default function EditProductPage() {
                       {productForm.status && (
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                            productForm.status
+                            productForm.status,
                           )}`}
                         >
                           {productForm.status}

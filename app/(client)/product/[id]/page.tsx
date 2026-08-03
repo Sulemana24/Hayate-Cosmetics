@@ -208,7 +208,7 @@ export default function ProductDetailPage() {
       "users",
       currentUserId,
       "favorites",
-      product.id
+      product.id,
     );
     const nextFavoriteState = !isFavorite;
     setIsFavorite(nextFavoriteState);
@@ -280,7 +280,7 @@ export default function ProductDetailPage() {
   const discountPercentage = Math.round(
     ((product.originalPrice - product.discountedPrice) /
       product.originalPrice) *
-      100
+      100,
   );
 
   const reviews = [
@@ -300,7 +300,7 @@ export default function ProductDetailPage() {
         <div className="mb-4">
           <button
             onClick={() => router.back()}
-            className="inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-[#e39a89] dark:hover:text-[#e39a89] font-medium"
+            className="inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-[#e39a89] dark:hover:text-[#e39a89] font-medium cursor-pointer"
           >
             <FiArrowLeft className="w-5 h-5" />
             Back
@@ -310,7 +310,7 @@ export default function ProductDetailPage() {
         <nav className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-6">
           <button
             onClick={() => router.back()}
-            className="hover:text-gray-900 dark:hover:text-white transition-colors"
+            className="hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer"
           >
             Products
           </button>
@@ -415,8 +415,8 @@ export default function ProductDetailPage() {
                       product.status === "In Stock"
                         ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                         : product.status === "Low Stock"
-                        ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                        : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                          ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                          : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                     }`}
                   >
                     {product.status}
@@ -511,7 +511,7 @@ export default function ProductDetailPage() {
                 <div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-lg">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                   >
                     -
                   </button>
@@ -520,7 +520,7 @@ export default function ProductDetailPage() {
                   </span>
                   <button
                     onClick={() => setQuantity(quantity + 1)}
-                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                   >
                     +
                   </button>

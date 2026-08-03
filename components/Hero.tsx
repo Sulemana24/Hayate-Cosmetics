@@ -44,11 +44,11 @@ export default function HeroSection() {
   const [loadingTrending, setLoadingTrending] = useState(true);
   const [favorites, setFavorites] = useState<{ [key: string]: boolean }>({});
   const [loadingFavs, setLoadingFavs] = useState<{ [key: string]: boolean }>(
-    {}
+    {},
   );
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>(
-    {}
+    {},
   );
 
   useEffect(() => {
@@ -77,7 +77,7 @@ export default function HeroSection() {
         for (const cat of categoriesToCheck) {
           const q = query(
             collection(db, "products"),
-            where("category", "==", cat)
+            where("category", "==", cat),
           );
           const snapshot = await getDocs(q);
           counts[cat] = snapshot.size;
@@ -178,7 +178,7 @@ export default function HeroSection() {
     },
     {
       id: 4,
-      name: "Makeup",
+      name: "Importation",
       image: Image7,
       count: `${categoryCounts["Makeup"] ?? 0} Products`,
       link: "/category/makeup",
@@ -243,7 +243,7 @@ export default function HeroSection() {
             "users",
             currentUserId,
             "favorites",
-            product.id
+            product.id,
           );
           const favSnap = await getDoc(favRef);
           if (favSnap.exists()) favs[product.id] = true;
@@ -451,74 +451,6 @@ export default function HeroSection() {
               </Link>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Trending Products */}
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="flex flex-col md:flex-row justify-between items-center mb-12">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
-                Trending Products
-              </h2>
-              <p className="text-gray-600">
-                Discover what everyone is loving right now
-              </p>
-            </div>
-
-            <button
-              onClick={() => setVisibleCount(13)}
-              className="mt-4 md:mt-0 inline-flex items-center gap-2 text-[#e39a89] hover:text-[#d87a6a] font-semibold text-lg"
-            >
-              View All Trending
-              <FiChevronRight className="w-5 h-5" />
-            </button>
-          </div>
-
-          {loadingTrending ? (
-            <p className="text-center text-gray-500">
-              Loading trending products...
-            </p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {allTrending.slice(0, visibleCount).map((product) => {
-                const isFav = favorites[product.id] || false;
-                const isLoading = loadingFavs[product.id] || false;
-                return (
-                  <div key={product.id} className="relative">
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      showActions={false}
-                      userId={currentUserId}
-                    />
-                    {/* Favorite button overlay */}
-                    <button
-                      onClick={() => toggleFavorite(product)}
-                      disabled={isLoading}
-                      className="absolute top-3 right-3 z-20 p-2 rounded-lg bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm hover:scale-110 transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                      aria-label={
-                        isFav ? "Remove from favorites" : "Add to favorites"
-                      }
-                    >
-                      {isLoading ? (
-                        <div className="w-4 h-4 border-2 border-[#e39a89] border-t-transparent rounded-full animate-spin"></div>
-                      ) : (
-                        <FiHeart
-                          className={`w-5 h-5 transition-all duration-300 ${
-                            isFav
-                              ? "text-red-500 fill-red-500 scale-110"
-                              : "text-gray-600 dark:text-gray-400 hover:text-red-500"
-                          }`}
-                        />
-                      )}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
       </section>
     </div>

@@ -196,7 +196,7 @@ export default function ClientFooter() {
                 />
                 <button
                   type="submit"
-                  className="bg-gradient-to-r from-[#e39a89] to-[#d87a6a] text-white px-8 py-3 rounded-xl font-medium hover:opacity-90 transition-opacity whitespace-nowrap"
+                  className="bg-gradient-to-r from-[#e39a89] to-[#d87a6a] text-white px-8 py-3 rounded-xl font-medium hover:opacity-90 transition-opacity whitespace-nowrap cursor-pointer"
                 >
                   Subscribe
                 </button>
