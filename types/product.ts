@@ -18,6 +18,7 @@ export interface Product {
   reviewCount?: number;
   isImported?: boolean;
   isPreOrder?: boolean;
+  popularity?: number;
 }
 
 export interface ProductCardProps {

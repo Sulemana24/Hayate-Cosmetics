@@ -439,7 +439,7 @@ export default function ProductDetailPage() {
                 {isImported && (
                   <div className="absolute top-4 right-4 bg-[#bc0686] text-white px-3 py-1.5 rounded-full text-xs font-bold tracking-wider flex items-center gap-1.5 shadow-lg">
                     <FiGlobe className="w-3.5 h-3.5" />
-                    Imported
+                    Pre-Order
                   </div>
                 )}
 
@@ -521,7 +521,7 @@ export default function ProductDetailPage() {
                   {isImported && (
                     <span className="text-sm font-medium px-3 py-1 rounded-full bg-[#bc0686]/10 text-[#bc0686] dark:bg-[#bc0686]/20 dark:text-[#d47a9e] flex items-center gap-1">
                       <FiGlobe className="w-3 h-3" />
-                      Imported
+                      Pre-Order
                     </span>
                   )}
 

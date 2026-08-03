@@ -71,6 +71,16 @@ interface CreatedOrder {
   currency: string;
 }
 
+interface CreateOrderResponse {
+  success: boolean;
+  orderId?: string;
+  orderCode?: string;
+  amount?: number;
+  currency?: string;
+  message?: string;
+  error?: string;
+}
+
 declare global {
   interface Window {
     PaystackPop: {
@@ -283,7 +293,7 @@ export default function CheckoutPage() {
 
       const responseText = await response.text();
 
-      let data: any = null;
+      let data: CreateOrderResponse | null = null;
 
       try {
         data = responseText ? JSON.parse(responseText) : null;

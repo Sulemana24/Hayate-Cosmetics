@@ -116,12 +116,19 @@ export default function ReviewModal({
         } else {
           console.warn("⚠️ Product not found, skipping rating update");
         }
-      } catch (productError: any) {
+      } catch (productError: unknown) {
         // If product update fails, log it but don't fail the review
-        console.warn(
-          "⚠️ Could not update product rating:",
-          productError.message,
-        );
+        if (productError instanceof Error) {
+          console.warn(
+            "⚠️ Could not update product rating:",
+            productError.message,
+          );
+        } else {
+          console.warn(
+            "⚠️ Could not update product rating:",
+            String(productError),
+          );
+        }
         // Don't throw - the review was already added successfully
       }
 
@@ -134,19 +141,39 @@ export default function ReviewModal({
         onClose();
         if (onReviewSubmitted) onReviewSubmitted();
       }, 1500);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("❌ Error submitting review:", err);
 
-      if (err.code === "permission-denied") {
-        setError(
-          "Unable to submit review. Please make sure you're logged in and have purchased this product.",
+      // Type guard for Firebase errors
+      const isFirebaseError = (
+        error: unknown,
+      ): error is { code: string; message: string } => {
+        return (
+          typeof error === "object" &&
+          error !== null &&
+          "code" in error &&
+          typeof (error as { code: unknown }).code === "string"
         );
-      } else if (err.code === "not-found") {
-        setError("Product not found. Please refresh and try again.");
-      } else {
+      };
+
+      if (isFirebaseError(err)) {
+        if (err.code === "permission-denied") {
+          setError(
+            "Unable to submit review. Please make sure you're logged in and have purchased this product.",
+          );
+        } else if (err.code === "not-found") {
+          setError("Product not found. Please refresh and try again.");
+        } else {
+          setError(
+            `Failed to submit review: ${err.message || "Please try again."}`,
+          );
+        }
+      } else if (err instanceof Error) {
         setError(
           `Failed to submit review: ${err.message || "Please try again."}`,
         );
+      } else {
+        setError("Failed to submit review. Please try again.");
       }
     } finally {
       setLoading(false);

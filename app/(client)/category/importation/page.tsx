@@ -10,6 +10,7 @@ import {
   where,
   orderBy,
   limit,
+  Timestamp,
 } from "firebase/firestore";
 import Image from "next/image";
 import Link from "next/link";
@@ -25,6 +26,21 @@ import {
   FiMapPin,
 } from "react-icons/fi";
 import { IoMdClose } from "react-icons/io";
+
+// Helper function to normalize timestamps
+const getTimestamp = (value: unknown): number => {
+  if (!value) return 0;
+  if (typeof value === "object" && value !== null && "toMillis" in value) {
+    return (value as Timestamp).toMillis();
+  }
+  if (typeof value === "number") return value;
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+};
 
 interface Product {
   id: string;
@@ -43,10 +59,11 @@ interface Product {
   origin?: string;
   importDate?: string;
   isImported?: boolean;
-  createdAt?: any;
-  updatedAt?: any;
+  createdAt?: Timestamp | number;
+  updatedAt?: Timestamp | number;
   categorySlug?: string;
   subCategorySlug?: string;
+  popularity?: number;
 }
 
 // Filter options - dynamically populated from products
@@ -137,13 +154,13 @@ export default function ImportedGoodsPage() {
                   )
                 : 0),
             // Set origin based on sub-category or default
-            origin: "Imported",
+            origin: "Pre-order",
           };
         }) as Product[];
 
         setProducts(productsList);
       } catch (error) {
-        console.error("Error fetching imported goods:", error);
+        console.error("Error fetching pre-ordered goods:", error);
 
         // Fallback: Fetch all products and filter client-side
         try {
@@ -240,8 +257,8 @@ export default function ImportedGoodsPage() {
     switch (sortBy) {
       case "newest":
         result.sort((a, b) => {
-          const dateA = a.createdAt?.toMillis?.() || a.createdAt || 0;
-          const dateB = b.createdAt?.toMillis?.() || b.createdAt || 0;
+          const dateA = getTimestamp(a.createdAt);
+          const dateB = getTimestamp(b.createdAt);
           return dateB - dateA;
         });
         break;
@@ -308,7 +325,7 @@ export default function ImportedGoodsPage() {
           <div className="max-w-3xl">
             <SectionEyebrow>Global Beauty</SectionEyebrow>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white tracking-tight mb-4">
-              Imported Goods
+              Pre-Ordered Goods
             </h1>
             <p className="text-lg md:text-xl text-white/70 max-w-2xl">
               Discover premium products sourced from around the world. From
@@ -343,7 +360,7 @@ export default function ImportedGoodsPage() {
               <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-[#1b3c35]/40 dark:text-white/40 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Search imported goods by name, category, or origin..."
+                placeholder="Search pre-ordered goods by name, category, or origin..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 bg-white dark:bg-[#16302a] rounded-xl ring-1 ring-[#1b3c35]/15 dark:ring-white/15 focus:ring-[#E39A89] focus:outline-none transition-all text-[#1b3c35] dark:text-white placeholder-[#1b3c35]/40 dark:placeholder-white/40"
@@ -534,11 +551,11 @@ export default function ImportedGoodsPage() {
             <p className="text-sm text-[#1b3c35]/60 dark:text-white/60">
               {loading
                 ? "Loading..."
-                : `Showing ${filteredProducts.length} imported products`}
+                : `Showing ${filteredProducts.length} pre-ordered products`}
             </p>
             {!loading && filteredProducts.length === 0 && (
               <p className="text-sm text-[#E39A89]">
-                No imported products found matching your criteria
+                No pre-ordered products found matching your criteria
               </p>
             )}
           </div>
@@ -584,10 +601,10 @@ export default function ImportedGoodsPage() {
                       height={400}
                       className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
                     />
-                    {/* Imported Badge */}
+                    {/* Pre-Order Badge */}
                     <div className="absolute top-2.5 left-2.5 bg-[#1b3c35] text-white px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider flex items-center gap-1">
                       <FiMapPin className="w-3 h-3" />
-                      Imported
+                      Pre-Order
                     </div>
                     {product.discountPercentage > 0 && (
                       <div className="absolute top-2.5 right-2.5 bg-[#E39A89] text-white px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider">
@@ -666,7 +683,7 @@ export default function ImportedGoodsPage() {
             <div className="text-center py-20">
               <div className="text-6xl mb-4">🌍</div>
               <h3 className="text-2xl font-semibold text-[#1b3c35] dark:text-white mb-2">
-                No imported products found
+                No pre-ordered products found
               </h3>
               <p className="text-[#1b3c35]/60 dark:text-white/60">
                 We&apos;re currently sourcing new products. Check back soon!

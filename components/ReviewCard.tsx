@@ -1,17 +1,20 @@
 import { Review } from "@/hooks/useProductReviews";
 import { FiStar, FiCheck, FiUser } from "react-icons/fi";
+import { Timestamp } from "firebase/firestore"; // Add this import
 
 interface ReviewCardProps {
   review: Review;
 }
 
 export default function ReviewCard({ review }: ReviewCardProps) {
-  const formatDate = (timestamp: any) => {
+  const formatDate = (
+    timestamp: Timestamp | Date | null | undefined,
+  ): string => {
     if (!timestamp) return "Recently";
 
     try {
       let date: Date;
-      if (timestamp.toDate) {
+      if (timestamp instanceof Timestamp) {
         date = timestamp.toDate();
       } else if (timestamp instanceof Date) {
         date = timestamp;
