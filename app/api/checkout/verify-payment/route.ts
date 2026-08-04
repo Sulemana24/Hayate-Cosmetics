@@ -104,10 +104,6 @@ export async function POST(request: NextRequest) {
     const secretKey = process.env.PAYSTACK_SECRET_KEY;
 
     if (!secretKey) {
-      console.error(
-        "PAYSTACK_SECRET_KEY is missing from environment variables.",
-      );
-
       return NextResponse.json(
         {
           success: false,
@@ -137,15 +133,7 @@ export async function POST(request: NextRequest) {
     const paystackData =
       (await paystackResponse.json()) as PaystackTransactionResponse;
 
-    /*
-     * =========================================================
-     * PAYSTACK REQUEST FAILED
-     * =========================================================
-     */
-
     if (!paystackResponse.ok || !paystackData.status) {
-      console.error("PAYSTACK VERIFICATION ERROR:", paystackData);
-
       return NextResponse.json(
         {
           success: false,
@@ -168,18 +156,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    /*
-     * =========================================================
-     * VERIFY REFERENCE
-     * =========================================================
-     */
-
     if (transaction.reference !== reference) {
-      console.error("PAYMENT REFERENCE MISMATCH:", {
-        expected: reference,
-        received: transaction.reference,
-      });
-
       return NextResponse.json(
         {
           success: false,
@@ -188,12 +165,6 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-
-    /*
-     * =========================================================
-     * VERIFY PAYMENT STATUS
-     * =========================================================
-     */
 
     if (transaction.status !== "success") {
       return NextResponse.json(
@@ -204,18 +175,6 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-
-    /*
-     * =========================================================
-     * VERIFY AMOUNT
-     * =========================================================
-     *
-     * Paystack returns amount in the smallest currency unit.
-     *
-     * GHS:
-     *
-     * ₵220.00 = 22000
-     */
 
     const expectedAmount = Math.round(Number(order.totalAmount) * 100);
 
@@ -232,14 +191,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (paidAmount !== expectedAmount) {
-      console.error("PAYMENT AMOUNT MISMATCH:", {
-        orderId,
-        reference,
-        expectedAmount,
-        paidAmount,
-        orderTotal: order.totalAmount,
-      });
-
       return NextResponse.json(
         {
           success: false,
@@ -249,20 +200,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    /*
-     * =========================================================
-     * VERIFY CURRENCY
-     * =========================================================
-     */
-
     const expectedCurrency = "GHS";
 
     if (transaction.currency !== expectedCurrency) {
-      console.error("PAYMENT CURRENCY MISMATCH:", {
-        expected: expectedCurrency,
-        received: transaction.currency,
-      });
-
       return NextResponse.json(
         {
           success: false,
@@ -271,12 +211,6 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-
-    /*
-     * =========================================================
-     * UPDATE ORDER
-     * =========================================================
-     */
 
     const globalOrderRef = adminDb.collection("orders").doc(orderId);
 
@@ -300,23 +234,9 @@ export async function POST(request: NextRequest) {
       updatedAt: FieldValue.serverTimestamp(),
     };
 
-    /*
-     * Update the user's order.
-     */
-
     await orderRef.update(updateData);
 
-    /*
-     * Update the global order.
-     */
-
     await globalOrderRef.update(updateData);
-
-    /*
-     * =========================================================
-     * REDUCE PRODUCT STOCK
-     * =========================================================
-     */
 
     const orderItems = Array.isArray(order.items) ? order.items : [];
 
@@ -357,12 +277,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    /*
-     * =========================================================
-     * CLEAR CART
-     * =========================================================
-     */
-
     const cartSnapshot = await adminDb
       .collection("users")
       .doc(userId)
@@ -378,12 +292,6 @@ export async function POST(request: NextRequest) {
 
       await batch.commit();
     }
-
-    /*
-     * =========================================================
-     * SUCCESS
-     * =========================================================
-     */
 
     return NextResponse.json({
       success: true,
@@ -403,8 +311,6 @@ export async function POST(request: NextRequest) {
       currency: transaction.currency,
     });
   } catch (error) {
-    console.error("VERIFY PAYMENT ERROR:", error);
-
     return NextResponse.json(
       {
         success: false,

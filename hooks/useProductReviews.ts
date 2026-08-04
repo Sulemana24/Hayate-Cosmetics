@@ -77,7 +77,6 @@ export function useProductReviews(productId: string, limitCount: number = 10) {
           setAverageRating(0);
         }
       } catch (err) {
-        console.error("Error fetching reviews:", err);
         setError("Failed to load reviews");
         setReviews([]);
         setAverageRating(0);

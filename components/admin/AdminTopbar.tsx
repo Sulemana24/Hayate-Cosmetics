@@ -45,33 +45,31 @@ export default function AdminNavbar() {
 
   useEffect(() => {
     const handleSidebarClosed = (event: CustomEvent) => {
-      console.log("Sidebar closed event received", event.detail);
       setIsSidebarOpen(false);
     };
 
     // Listen for sidebar state changes
     const handleSidebarStateChange = (event: CustomEvent) => {
-      console.log("Sidebar state changed", event.detail);
       setIsSidebarOpen(event.detail.isOpen);
     };
 
     window.addEventListener(
       "sidebar-closed",
-      handleSidebarClosed as EventListener
+      handleSidebarClosed as EventListener,
     );
     window.addEventListener(
       "sidebar-state-change",
-      handleSidebarStateChange as EventListener
+      handleSidebarStateChange as EventListener,
     );
 
     return () => {
       window.removeEventListener(
         "sidebar-closed",
-        handleSidebarClosed as EventListener
+        handleSidebarClosed as EventListener,
       );
       window.removeEventListener(
         "sidebar-state-change",
-        handleSidebarStateChange as EventListener
+        handleSidebarStateChange as EventListener,
       );
     };
   }, []);
@@ -97,7 +95,7 @@ export default function AdminNavbar() {
     window.dispatchEvent(
       new CustomEvent("toggle-sidebar", {
         detail: { isOpen: !isSidebarOpen },
-      })
+      }),
     );
   };
 

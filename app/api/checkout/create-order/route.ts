@@ -172,13 +172,6 @@ export async function POST(request: NextRequest) {
       }
 
       if (!Number.isFinite(price) || price <= 0) {
-        console.error("INVALID PRODUCT PRICE:", {
-          productId,
-          productName: product.name,
-          discountedPrice: product.discountedPrice,
-          originalPrice: product.originalPrice,
-        });
-
         return NextResponse.json(
           {
             success: false,
@@ -216,15 +209,6 @@ export async function POST(request: NextRequest) {
     const totalAmount = subtotal + shippingFee + tax;
 
     if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
-      console.error("INVALID ORDER TOTAL:", {
-        userId,
-        subtotal,
-        shippingFee,
-        tax,
-        totalAmount,
-        cartItems,
-      });
-
       return NextResponse.json(
         {
           success: false,
@@ -302,8 +286,6 @@ export async function POST(request: NextRequest) {
       currency: "GHS",
     });
   } catch (error) {
-    console.error("CREATE ORDER ERROR:", error);
-
     return NextResponse.json(
       {
         success: false,

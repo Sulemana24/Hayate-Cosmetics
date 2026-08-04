@@ -23,6 +23,7 @@ import {
   Timestamp,
   limit,
 } from "firebase/firestore";
+import { useToast } from "@/components/ToastProvider";
 
 interface Product {
   id: string;
@@ -82,6 +83,7 @@ export default function AdminDashboardPage() {
     averageOrderValue: 0,
   });
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
+  const { showToast } = useToast();
 
   const fetchRecentOrders = async (): Promise<RecentOrder[]> => {
     const ordersRef = collection(db, "orders");
@@ -109,7 +111,7 @@ export default function AdminDashboardPage() {
       try {
         const productsQuery = query(
           collection(db, "products"),
-          orderBy("createdAt", "desc")
+          orderBy("createdAt", "desc"),
         );
         const productsSnapshot = await getDocs(productsQuery);
         const products = productsSnapshot.docs.map((doc) => ({
@@ -119,13 +121,13 @@ export default function AdminDashboardPage() {
 
         const totalProducts = products.length;
         const inStockProducts = products.filter(
-          (p) => p.status === "In Stock"
+          (p) => p.status === "In Stock",
         ).length;
         const lowStockProducts = products.filter(
-          (p) => p.status === "Low Stock"
+          (p) => p.status === "Low Stock",
         ).length;
         const outOfStockProducts = products.filter(
-          (p) => p.status === "Out of Stock"
+          (p) => p.status === "Out of Stock",
         ).length;
         const inventoryItems = products.reduce((sum, p) => sum + p.quantity, 0);
 
@@ -133,7 +135,7 @@ export default function AdminDashboardPage() {
         const totalOrders = orders.length;
         const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
         const pendingOrders = orders.filter(
-          (o) => o.status === "pending" || o.status === "processing"
+          (o) => o.status === "pending" || o.status === "processing",
         ).length;
         const averageOrderValue =
           totalOrders > 0 ? totalRevenue / totalOrders : 0;
@@ -153,7 +155,11 @@ export default function AdminDashboardPage() {
 
         setRecentOrders(orders);
       } catch (err) {
-        console.error("Error fetching dashboard stats:", err);
+        showToast({
+          type: "error",
+          title: "Error",
+          message: "Failed to fetch dashboard stats",
+        });
       } finally {
         setLoading(false);
       }
@@ -213,7 +219,7 @@ export default function AdminDashboardPage() {
               <FiArrowUp className="w-3 h-3 mr-1" />
               {calculatePercentageChange(
                 stats.totalRevenue,
-                previousMonthStats.totalRevenue
+                previousMonthStats.totalRevenue,
               ).toFixed(1)}
               %
             </span>
@@ -243,7 +249,7 @@ export default function AdminDashboardPage() {
               <FiArrowUp className="w-3 h-3 mr-1" />
               {calculatePercentageChange(
                 stats.totalOrders,
-                previousMonthStats.totalOrders
+                previousMonthStats.totalOrders,
               ).toFixed(1)}
               %
             </span>
@@ -269,7 +275,7 @@ export default function AdminDashboardPage() {
               <FiArrowUp className="w-3 h-3 mr-1" />
               {calculatePercentageChange(
                 stats.totalProducts,
-                previousMonthStats.totalProducts
+                previousMonthStats.totalProducts,
               ).toFixed(1)}
               %
             </span>
@@ -295,7 +301,7 @@ export default function AdminDashboardPage() {
               className={`text-sm font-medium flex items-center ${
                 calculatePercentageChange(
                   stats.totalCustomers,
-                  previousMonthStats.totalCustomers
+                  previousMonthStats.totalCustomers,
                 ) >= 0
                   ? "text-green-600 dark:text-green-400"
                   : "text-red-600 dark:text-red-400"
@@ -303,7 +309,7 @@ export default function AdminDashboardPage() {
             >
               {calculatePercentageChange(
                 stats.totalCustomers,
-                previousMonthStats.totalCustomers
+                previousMonthStats.totalCustomers,
               ) >= 0 ? (
                 <FiArrowUp className="w-3 h-3 mr-1" />
               ) : (
@@ -312,8 +318,8 @@ export default function AdminDashboardPage() {
               {Math.abs(
                 calculatePercentageChange(
                   stats.totalCustomers,
-                  previousMonthStats.totalCustomers
-                )
+                  previousMonthStats.totalCustomers,
+                ),
               ).toFixed(1)}
               %
             </span>
@@ -516,10 +522,10 @@ export default function AdminDashboardPage() {
                           order.status === "delivered"
                             ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
                             : order.status === "shipped"
-                            ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
-                            : order.status === "processing"
-                            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
-                            : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                              : order.status === "processing"
+                                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
+                                : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
                         }`}
                       >
                         {order.status.charAt(0).toUpperCase() +
@@ -557,7 +563,7 @@ export default function AdminDashboardPage() {
             +
             {calculatePercentageChange(
               stats.totalProducts,
-              previousMonthStats.totalProducts
+              previousMonthStats.totalProducts,
             ).toFixed(1)}
             %
           </p>

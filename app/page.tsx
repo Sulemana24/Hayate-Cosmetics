@@ -42,17 +42,6 @@ interface Product {
   discountPercentage: number;
 }
 
-/**
- * Design tokens (see design notes at bottom of file for rationale):
- * ink      #1b3c35  – deep botanical green, headings / dark surfaces
- * cream    #FBF6EF  – warm base, replaces stark white/gray
- * clay     #E39A89  – accent, CTAs, discount/price highlights
- * sage     #8FA593  – secondary accent, dividers, muted UI
- * charcoal #26261F  – body text
- */
-
-// Small reusable "eyebrow" label — gives each section a consistent
-// hand-set feel instead of a plain heading floating alone.
 function SectionEyebrow({ children }: { children: React.ReactNode }) {
   return (
     <span className="inline-flex items-center gap-2 text-xs font-semibold tracking-[0.2em] uppercase text-[#8FA593] dark:text-[#a9c2ae] mb-3">
@@ -62,8 +51,6 @@ function SectionEyebrow({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Botanical divider used between major sections instead of a hard edge —
-// this is the page's one recurring signature element.
 function LeafDivider() {
   return (
     <div className="flex items-center justify-center py-2" aria-hidden="true">
@@ -135,7 +122,7 @@ export default function Home() {
         })) as Product[];
         setNewArrivals(products);
       } catch (error) {
-        console.error("Error fetching new arrivals:", error);
+        // Silent fail
       } finally {
         setLoading((prev) => ({ ...prev, newArrivals: false }));
       }
@@ -167,7 +154,7 @@ export default function Home() {
           setBestSellers(products);
         }
       } catch (error) {
-        console.error("Error fetching best sellers:", error);
+        // Silent fail
       } finally {
         setLoading((prev) => ({ ...prev, bestSellers: false }));
       }
@@ -201,7 +188,7 @@ export default function Home() {
         );
         setSpecialOffers(discountedProducts.slice(0, 6));
       } catch (error) {
-        console.error("Error fetching special offers:", error);
+        // Silent fail
       } finally {
         setLoading((prev) => ({ ...prev, specialOffers: false }));
       }
@@ -210,7 +197,6 @@ export default function Home() {
     fetchSpecialOffers();
   }, []);
 
-  // Fetch Featured Products with pagination
   useEffect(() => {
     const fetchFeatured = async () => {
       try {
@@ -229,7 +215,7 @@ export default function Home() {
         setFeaturedProducts(products);
         setHasMoreFeatured(products.length === featuredLimit);
       } catch (error) {
-        console.error("Error fetching featured products:", error);
+        // Silent fail
       } finally {
         setLoading((prev) => ({ ...prev, featured: false }));
       }

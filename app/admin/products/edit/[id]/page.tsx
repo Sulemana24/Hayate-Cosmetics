@@ -54,7 +54,13 @@ export default function EditProductPage() {
     status: "In Stock" as "In Stock" | "Low Stock" | "Out of Stock",
   });
 
-  const productCategories = ["Skincare", "Fragrance", "Accessories"];
+  const productCategories = [
+    "Skincare",
+    "Fragrance",
+    "Accessories",
+    "Importation",
+  ];
+
   const subCategoriesMap: Record<string, string[]> = {
     Skincare: [
       "Cleanser",
@@ -91,7 +97,7 @@ export default function EditProductPage() {
       "Others",
     ],
     Importation: [
-      "Clothes",
+      "Fashion",
       "Bags",
       "Jewelry",
       "Home Appliances",
@@ -252,7 +258,6 @@ export default function EditProductPage() {
       router.push("/admin/products");
       router.refresh();
     } catch (error) {
-      console.error("Error updating product:", error);
       showToast({
         type: "error",
         title: "Update Failed",

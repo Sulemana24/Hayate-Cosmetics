@@ -18,17 +18,13 @@ export default function ProtectedAdmin({
 
   useEffect(() => {
     if (pathname === "/admin" || pathname === "/admin/") {
-      console.log("🔒 On admin auth page, skipping protection");
       setLoading(false);
       setIsAuthorized(true);
       return;
     }
 
     const unsub = onAuthStateChanged(auth, async (user) => {
-      console.log("🔒 Auth state changed. User:", user?.email || "No user");
-
       if (!user) {
-        console.log("🔒 No user found, redirecting to /admin");
         router.push("/admin");
         setLoading(false);
         return;
@@ -36,23 +32,17 @@ export default function ProtectedAdmin({
 
       try {
         const email = user.email?.toLowerCase().trim();
-        console.log("🔒 Checking email:", email);
 
-        // Check if email is in allowed admins list
         if (!email || !allowedAdmins.includes(email)) {
-          console.log("🔒 Email not allowed, signing out");
           await signOut(auth);
           router.push("/admin");
           setLoading(false);
           return;
         }
 
-        // Email is allowed, grant access
-        console.log("✅ Admin access granted for:", email);
         setIsAuthorized(true);
         setLoading(false);
       } catch (error) {
-        console.error("🔒 Error checking admin access:", error);
         await signOut(auth);
         router.push("/admin");
         setLoading(false);

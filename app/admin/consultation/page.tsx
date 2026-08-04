@@ -25,6 +25,7 @@ import {
   FiChevronDown,
   FiX,
 } from "react-icons/fi";
+import { useToast } from "@/components/ToastProvider";
 
 interface Consultation {
   id: string;
@@ -47,13 +48,14 @@ export default function AdminConsultationsPage() {
   const [selectedType, setSelectedType] = useState("All");
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     const fetchConsultations = async () => {
       try {
         const q = query(
           collection(db, "consultations"),
-          orderBy("createdAt", "desc")
+          orderBy("createdAt", "desc"),
         );
 
         const snapshot = await getDocs(q);
@@ -65,7 +67,11 @@ export default function AdminConsultationsPage() {
 
         setConsultations(data);
       } catch (error) {
-        console.error("Failed to fetch consultations:", error);
+        showToast({
+          type: "error",
+          title: "Error",
+          message: "Failed to fetch consultations",
+        });
       } finally {
         setLoading(false);
       }
@@ -83,11 +89,14 @@ export default function AdminConsultationsPage() {
       });
 
       setConsultations((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, status: "completed" } : c))
+        prev.map((c) => (c.id === id ? { ...c, status: "completed" } : c)),
       );
     } catch (error) {
-      console.error("Failed to mark as completed:", error);
-      alert("Failed to update status");
+      showToast({
+        type: "error",
+        title: "Error",
+        message: "Failed to mark as completed",
+      });
     }
   };
 
@@ -100,11 +109,14 @@ export default function AdminConsultationsPage() {
       });
 
       setConsultations((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, status: "cancelled" } : c))
+        prev.map((c) => (c.id === id ? { ...c, status: "cancelled" } : c)),
       );
     } catch (error) {
-      console.error("Failed to cancel:", error);
-      alert("Failed to cancel consultation");
+      showToast({
+        type: "error",
+        title: "Error",
+        message: "Failed to cancel consultation",
+      });
     }
   };
 
@@ -127,13 +139,13 @@ export default function AdminConsultationsPage() {
   // Calculate stats
   const totalConsultations = consultations.length;
   const pendingCount = consultations.filter(
-    (c) => c.status === "pending" || c.status === "scheduled"
+    (c) => c.status === "pending" || c.status === "scheduled",
   ).length;
   const completedCount = consultations.filter(
-    (c) => c.status === "completed"
+    (c) => c.status === "completed",
   ).length;
   const cancelledCount = consultations.filter(
-    (c) => c.status === "cancelled"
+    (c) => c.status === "cancelled",
   ).length;
   const totalRevenue = consultations.reduce((sum, c) => sum + c.price, 0);
 
@@ -415,10 +427,10 @@ export default function AdminConsultationsPage() {
                           c.status === "completed"
                             ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
                             : c.status === "cancelled"
-                            ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-                            : c.status === "pending"
-                            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
-                            : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                              ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                              : c.status === "pending"
+                                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
+                                : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
                         }`}
                       >
                         {c.status.charAt(0).toUpperCase() + c.status.slice(1)}

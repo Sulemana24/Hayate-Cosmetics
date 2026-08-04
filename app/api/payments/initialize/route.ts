@@ -7,17 +7,12 @@ const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 export async function POST(request: NextRequest) {
   try {
     if (!PAYSTACK_SECRET_KEY) {
-      console.error("PAYSTACK_SECRET_KEY is missing");
-
       return NextResponse.json(
         { error: "Payment service is not configured" },
         { status: 500 },
       );
     }
 
-    // --------------------------------------------------
-    // 1. Authenticate the Firebase user
-    // --------------------------------------------------
     const authHeader = request.headers.get("authorization");
 
     if (!authHeader?.startsWith("Bearer ")) {
@@ -34,8 +29,6 @@ export async function POST(request: NextRequest) {
     try {
       decodedToken = await adminAuth.verifyIdToken(idToken);
     } catch (error) {
-      console.error("Firebase token verification failed:", error);
-
       return NextResponse.json(
         { error: "Invalid or expired authentication token" },
         { status: 401 },
@@ -44,9 +37,6 @@ export async function POST(request: NextRequest) {
 
     const userId = decodedToken.uid;
 
-    // --------------------------------------------------
-    // 2. Get checkout information
-    // --------------------------------------------------
     const body = await request.json();
 
     const {
@@ -61,9 +51,6 @@ export async function POST(request: NextRequest) {
       country,
     } = body;
 
-    // --------------------------------------------------
-    // 3. Validate shipping information
-    // --------------------------------------------------
     if (
       !firstName ||
       !lastName ||
@@ -79,12 +66,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Do not trust the email sent by the browser.
     const customerEmail = decodedToken.email || email;
 
-    // --------------------------------------------------
-    // 4. Read the user's cart SERVER-SIDE
-    // --------------------------------------------------
     const cartSnapshot = await adminDb
       .collection("users")
       .doc(userId)
@@ -98,9 +81,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // --------------------------------------------------
-    // 5. Read actual products and calculate price SERVER-SIDE
-    // --------------------------------------------------
     const items = [];
     let subtotal = 0;
 
@@ -149,8 +129,6 @@ export async function POST(request: NextRequest) {
       const availableQuantity = Number(product.quantity);
 
       if (!Number.isFinite(productPrice) || productPrice < 0) {
-        console.error("Invalid product price:", productId);
-
         return NextResponse.json(
           { error: "Invalid product price" },
           { status: 500 },
@@ -158,17 +136,12 @@ export async function POST(request: NextRequest) {
       }
 
       if (!Number.isInteger(availableQuantity) || availableQuantity < 0) {
-        console.error("Invalid product inventory:", productId);
-
         return NextResponse.json(
           { error: "Invalid product inventory" },
           { status: 500 },
         );
       }
 
-      // --------------------------------------------------
-      // 6. Check inventory SERVER-SIDE
-      // --------------------------------------------------
       if (quantity > availableQuantity) {
         return NextResponse.json(
           {
@@ -193,9 +166,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // --------------------------------------------------
-    // 7. Calculate total SERVER-SIDE
-    // --------------------------------------------------
     const shippingFee = 0;
     const tax = 0;
 
@@ -208,12 +178,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Paystack uses the smallest currency unit.
     const amountInPesewas = Math.round(totalAmount * 100);
 
-    // --------------------------------------------------
-    // 8. Create order ID
-    // --------------------------------------------------
     const orderRef = adminDb
       .collection("users")
       .doc(userId)
@@ -264,9 +230,6 @@ export async function POST(request: NextRequest) {
       updatedAt: FieldValue.serverTimestamp(),
     };
 
-    // --------------------------------------------------
-    // 9. Create order in both locations
-    // --------------------------------------------------
     const globalOrderRef = adminDb.collection("orders").doc(orderId);
 
     const batch = adminDb.batch();
@@ -276,9 +239,6 @@ export async function POST(request: NextRequest) {
 
     await batch.commit();
 
-    // --------------------------------------------------
-    // 10. Initialize Paystack SERVER-SIDE
-    // --------------------------------------------------
     const paystackResponse = await fetch(
       "https://api.paystack.co/transaction/initialize",
       {
@@ -307,9 +267,6 @@ export async function POST(request: NextRequest) {
     const paystackData = await paystackResponse.json();
 
     if (!paystackResponse.ok || !paystackData.status) {
-      console.error("Paystack initialization failed:", paystackData);
-
-      // Mark order as failed instead of leaving it pending forever.
       await Promise.all([
         orderRef.update({
           status: "payment_initialization_failed",
@@ -329,9 +286,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // --------------------------------------------------
-    // 11. Save Paystack reference
-    // --------------------------------------------------
     await Promise.all([
       orderRef.update({
         paymentReference: paystackData.data.reference,
@@ -343,9 +297,6 @@ export async function POST(request: NextRequest) {
       }),
     ]);
 
-    // --------------------------------------------------
-    // 12. Return only what the browser needs
-    // --------------------------------------------------
     return NextResponse.json({
       success: true,
       orderId,
@@ -355,8 +306,6 @@ export async function POST(request: NextRequest) {
       currency: "GHS",
     });
   } catch (error) {
-    console.error("PAYMENT INITIALIZATION ERROR:", error);
-
     return NextResponse.json(
       {
         error: "Unable to prepare payment",

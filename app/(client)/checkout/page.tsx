@@ -197,8 +197,6 @@ export default function CheckoutPage() {
 
         setCartItems(items);
       } catch (error) {
-        console.error("FETCH CART ERROR:", error);
-
         showToast({
           type: "error",
           message: "Failed to load cart items. Please try again.",
@@ -273,8 +271,6 @@ export default function CheckoutPage() {
         country: formData.country,
       };
 
-      console.log("Creating temporary order...");
-
       const response = await fetch("/api/checkout/create-order", {
         method: "POST",
 
@@ -298,17 +294,10 @@ export default function CheckoutPage() {
       try {
         data = responseText ? JSON.parse(responseText) : null;
       } catch {
-        console.error("CREATE ORDER returned non-JSON response:", responseText);
-
         throw new Error(
           `Checkout server returned an invalid response (${response.status}).`,
         );
       }
-
-      console.log("Create order response:", {
-        status: response.status,
-        data,
-      });
 
       if (!response.ok) {
         throw new Error(
@@ -345,8 +334,6 @@ export default function CheckoutPage() {
 
       return createdOrder;
     } catch (error) {
-      console.error("CREATE TEMP ORDER ERROR:", error);
-
       if (error instanceof TypeError && error.message === "Failed to fetch") {
         throw new Error(
           "Unable to connect to the checkout server. Make sure your Next.js server is running and that /api/checkout/create-order exists.",
@@ -395,8 +382,6 @@ export default function CheckoutPage() {
     orderId: string,
   ) => {
     if (!orderId) {
-      console.error("Missing order ID after payment.");
-
       showToast({
         type: "error",
         message:
@@ -429,8 +414,6 @@ export default function CheckoutPage() {
         router.push("/orders?payment=success");
       }, 3000);
     } catch (error) {
-      console.error("PAYMENT VERIFICATION FAILED:", error);
-
       showToast({
         type: "error",
         message:
@@ -443,15 +426,7 @@ export default function CheckoutPage() {
     }
   };
 
-  /*
-   * =========================================================
-   * PAYMENT FAILED
-   * =========================================================
-   */
-
   const onPaymentFailed = (response: PaystackResponse) => {
-    console.log("PAYMENT FAILED/CANCELLED:", response);
-
     showToast({
       type: "error",
       message: "Payment failed or was cancelled. Please try again.",
@@ -459,12 +434,6 @@ export default function CheckoutPage() {
 
     setProcessing(false);
   };
-
-  /*
-   * =========================================================
-   * INPUT HANDLER
-   * =========================================================
-   */
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -485,12 +454,6 @@ export default function CheckoutPage() {
       }));
     }
   };
-
-  /*
-   * =========================================================
-   * NEXT STEP
-   * =========================================================
-   */
 
   const handleNextStep = async () => {
     if (activeStep === 1) {
@@ -517,22 +480,11 @@ export default function CheckoutPage() {
         return;
       }
 
-      /*
-       * Load Paystack while the user
-       * reviews the order.
-       */
-
       loadPaystackScript();
 
       setActiveStep(2);
     }
   };
-
-  /*
-   * =========================================================
-   * PREVIOUS STEP
-   * =========================================================
-   */
 
   const handlePreviousStep = () => {
     if (activeStep > 1) {
@@ -540,17 +492,7 @@ export default function CheckoutPage() {
     }
   };
 
-  /*
-   * =========================================================
-   * HANDLE PAYMENT
-   * =========================================================
-   */
-
   const handlePayment = async () => {
-    /*
-     * Validate shipping information
-     */
-
     if (
       !formData.firstName ||
       !formData.lastName ||
@@ -570,10 +512,6 @@ export default function CheckoutPage() {
       return;
     }
 
-    /*
-     * Check authentication
-     */
-
     if (!auth.currentUser) {
       showToast({
         type: "error",
@@ -584,10 +522,6 @@ export default function CheckoutPage() {
 
       return;
     }
-
-    /*
-     * Check Paystack
-     */
 
     if (!paystackLoaded) {
       showToast({
@@ -610,8 +544,6 @@ export default function CheckoutPage() {
     }
 
     if (!paystackPublicKey) {
-      console.error("NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY is missing.");
-
       showToast({
         type: "error",
         message: "Payment configuration error.",
@@ -620,10 +552,6 @@ export default function CheckoutPage() {
       return;
     }
 
-    /*
-     * Prevent double clicking
-     */
-
     if (processing) {
       return;
     }
@@ -631,27 +559,11 @@ export default function CheckoutPage() {
     setProcessing(true);
 
     try {
-      /*
-       * =====================================================
-       * STEP 1
-       * CREATE ORDER SERVER-SIDE
-       * =====================================================
-       */
-
       const createdOrder = await createTempOrder();
 
       const serverOrderId = createdOrder.orderId;
 
-      /*
-       * =====================================================
-       * STEP 2
-       * CREATE PAYSTACK CALLBACK
-       * =====================================================
-       */
-
       const callbackFn = async (response: PaystackResponse) => {
-        console.log("Paystack callback:", response);
-
         if (response.status === "success") {
           await onPaymentSuccess(response, serverOrderId);
         } else {
@@ -689,13 +601,9 @@ export default function CheckoutPage() {
         },
 
         callback: (response: PaystackResponse) => {
-          console.log("Paystack callback triggered:", response);
-
           if (handlePaymentCallbackRef.current) {
             handlePaymentCallbackRef.current(response);
           } else {
-            console.error("Payment callback handler is missing.");
-
             if (response.status === "success") {
               onPaymentSuccess(response, tempOrderIdRef.current);
             } else {
@@ -705,8 +613,6 @@ export default function CheckoutPage() {
         },
 
         onClose: () => {
-          console.log("Paystack window closed.");
-
           setProcessing(false);
         },
       };
@@ -715,8 +621,6 @@ export default function CheckoutPage() {
 
       handler.openIframe();
     } catch (error) {
-      console.error("PAYMENT PREPARATION ERROR:", error);
-
       setProcessing(false);
 
       showToast({
@@ -833,7 +737,6 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-[#d87a6a]/10 via-white to-[#fcefe9] dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-8 sm:py-12 md:py-16 px-4">
         <div className="relative max-w-7xl mx-auto">
           <div className="max-w-3xl mx-auto text-center">
@@ -852,7 +755,6 @@ export default function CheckoutPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
         <div className="max-w-6xl mx-auto">
-          {/* Progress Steps */}
           <div className="mb-8 sm:mb-12 px-2">
             <div className="flex items-center justify-center max-w-md mx-auto">
               {steps.map((step, index) => (
@@ -1278,8 +1180,6 @@ export default function CheckoutPage() {
                   </div>
                 </div>
               </div>
-
-              {/* Need Help */}
 
               <div className="bg-gradient-to-br from-[#d87a6a]/10 to-[#c76a5a]/10 rounded-2xl p-6">
                 <h4 className="font-bold text-gray-900 dark:text-white mb-3">

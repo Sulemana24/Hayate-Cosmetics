@@ -14,6 +14,7 @@ import {
   getDoc,
   serverTimestamp,
 } from "firebase/firestore";
+import { useToast } from "@/components/ToastProvider";
 
 interface ProductCardProps {
   product: Product;
@@ -25,6 +26,9 @@ interface ProductCardProps {
   userId?: string | null;
   layout?: "grid" | "list";
 }
+
+// Shared tokens with the rest of the storefront: ink #1b3c35, clay #E39A89
+// (→ #c9614d for AA-safe text-on-light), sage #8FA593.
 
 export default function ProductCard({
   product,
@@ -44,6 +48,7 @@ export default function ProductCard({
     height: 400,
   });
   const [currentUserId, setCurrentUserId] = useState<string | null>(userId);
+  const { showToast } = useToast();
 
   useEffect(() => {
     const auth = getAuth();
@@ -71,7 +76,11 @@ export default function ProductCard({
         const favoriteSnap = await getDoc(favoriteRef);
         setIsFavorite(favoriteSnap.exists());
       } catch (err) {
-        console.error("Error fetching favorite status:", err);
+        showToast({
+          type: "error",
+          title: "Error",
+          message: "Failed to fetch favorite status",
+        });
       }
     };
     fetchFavoriteStatus();
@@ -99,13 +108,13 @@ export default function ProductCard({
   const getStatusColor = () => {
     switch (product.status) {
       case "In Stock":
-        return "bg-green-500/10 text-green-600 dark:text-green-400";
+        return "bg-[#8FA593]/15 text-[#4d6b56] dark:text-[#a9c2ae]";
       case "Low Stock":
-        return "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400";
+        return "bg-amber-500/10 text-amber-700 dark:text-amber-400";
       case "Out of Stock":
         return "bg-red-500/10 text-red-600 dark:text-red-400";
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
+        return "bg-[#1b3c35]/[0.06] text-[#1b3c35] dark:bg-white/10 dark:text-white/70";
     }
   };
 
@@ -153,9 +162,13 @@ export default function ProductCard({
       }
       onFavoriteToggle?.(product.id, nextFavoriteState);
     } catch (err) {
+      showToast({
+        type: "error",
+        title: "Error",
+        message: "Failed to update favorite",
+      });
       console.error("Favorite update failed:", err);
       setIsFavorite(!nextFavoriteState);
-      alert("Failed to update favorite. Try again.");
     } finally {
       setIsLoadingFavorite(false);
     }
@@ -180,136 +193,124 @@ export default function ProductCard({
           aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
         >
           {isLoadingFavorite ? (
-            <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-[#e39a89] border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-[#E39A89] border-t-transparent rounded-full animate-spin"></div>
           ) : (
             <FiHeart
               className={`w-4 h-4 md:w-5 md:h-5 transition-all duration-300 ${
                 isFavorite
-                  ? "text-red-500 fill-red-500 scale-110"
-                  : "text-gray-600 dark:text-gray-400 group-hover:text-red-500"
+                  ? "text-[#c9614d] fill-[#c9614d] scale-110"
+                  : "text-gray-500 dark:text-gray-400 group-hover:text-[#c9614d]"
               }`}
             />
           )}
         </button>
       )}
 
+      {/*
+        Note: the original had two nested wrapper elements (Link + inner div)
+        both carrying near-identical rounded-2xl/border/shadow classes, so
+        every card rendered two overlapping card outlines. Collapsed into a
+        single styled element on the Link itself — same visual card, one edge.
+      */}
       <Link
         href={`/product/${product.id}`}
         className={`
-          block rounded-2xl shadow-lg dark:shadow-black/40
-
-          hover:shadow-2xl transition-all duration-500 overflow-hidden
-          border border-gray-100 dark:border-gray-800
+          block bg-white dark:bg-gray-900 rounded-2xl shadow-md dark:shadow-black/40
+          hover:shadow-xl transition-all duration-500 overflow-hidden
+          ring-1 ring-black/5 dark:ring-white/10 hover:ring-[#E39A89]/30
           ${layout === "list" ? "sm:flex sm:items-stretch" : "h-full"}
           transform group-hover:-translate-y-2
         `}
       >
+        {/* Image & Status */}
         <div
           className={`
-            bg-white dark:bg-gray-900 rounded-2xl shadow-lg dark:shadow-black/40
- hover:shadow-2xl 
-            transition-all duration-500 overflow-hidden border border-gray-100 dark:border-gray-800 
-            ${
-              layout === "list"
-                ? "sm:flex-1 sm:flex sm:items-stretch"
-                : "h-full"
-            }
-            transform group-hover:-translate-y-2
+            relative overflow-hidden bg-[#1b3c35]/5 dark:from-gray-800 dark:to-gray-900
+            ${layout === "list" ? "sm:w-1/3 sm:flex-shrink-0 sm:h-auto" : ""}
           `}
         >
-          {/* Image & Status */}
-          <div
-            className={`
-              relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 
-              dark:from-gray-800 dark:to-gray-900
-              ${layout === "list" ? "sm:w-1/3 sm:flex-shrink-0 sm:h-auto" : ""}
-            `}
-          >
-            {discountPercentage > 0 && (
-              <div className="absolute top-3 left-3 md:top-4 md:left-4 z-20">
-                <div className="relative">
-                  <div className="bg-gradient-to-r from-[#ff6b6b] to-[#ee5a52] text-white text-xs md:text-sm font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl shadow-xl flex items-center gap-1 md:gap-1.5">
-                    <FiTag className="w-2.5 h-2.5 md:w-3 md:h-3" />-
-                    {discountPercentage}%
-                  </div>
-                  <div className="absolute -bottom-0.5 md:-bottom-1 left-3 md:left-4 w-2 h-2 md:w-3 md:h-3 bg-gradient-to-r from-[#ff6b6b] to-[#ee5a52] transform rotate-45"></div>
+          {discountPercentage > 0 && (
+            <div className="absolute top-3 left-3 md:top-4 md:left-4 z-20">
+              <div className="relative">
+                <div className="bg-[#c9614d] text-white text-xs md:text-sm font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl shadow-lg flex items-center gap-1 md:gap-1.5">
+                  <FiTag className="w-2.5 h-2.5 md:w-3 md:h-3" />-
+                  {discountPercentage}%
                 </div>
+                <div className="absolute -bottom-0.5 md:-bottom-1 left-3 md:left-4 w-2 h-2 md:w-3 md:h-3 bg-[#c9614d] transform rotate-45"></div>
+              </div>
+            </div>
+          )}
+
+          <div className="relative aspect-square w-full overflow-hidden cursor-pointer">
+            {product.imageUrl && !imageError ? (
+              <Image
+                src={product.imageUrl}
+                alt={product.name}
+                width={400}
+                height={400}
+                className={`object-cover w-full h-full transition-transform duration-300 ${
+                  isMobile ? "group-active:scale-105" : "group-hover:scale-105"
+                }`}
+                sizes="(max-width: 768px) 100vw, 25vw"
+                onError={() => setImageError(true)}
+                quality={90}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-[#1b3c35]/5 dark:bg-gray-800">
+                <FiPackage className="w-12 h-12 text-[#1b3c35]/30 dark:text-gray-500" />
               </div>
             )}
 
-            <div className="relative aspect-square w-full overflow-hidden cursor-pointer">
-              {product.imageUrl && !imageError ? (
-                <Image
-                  src={product.imageUrl}
-                  alt={product.name}
-                  width={100}
-                  height={100}
-                  className={`object-cover w-full h-full transition-transform duration-300 ${
-                    isMobile
-                      ? "group-active:scale-105"
-                      : "group-hover:scale-105"
-                  }`}
-                  sizes="(max-width: 768px) 100vw, 25vw"
-                  onError={() => setImageError(true)}
-                  quality={90}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
-                  <FiPackage className="w-12 h-12 text-gray-400" />
-                </div>
-              )}
-
-              {/* Status badge */}
-              <div className="absolute bottom-3 left-3">
-                <span
-                  className={`text-xs font-medium px-3 py-1 rounded-full ${getStatusColor()} backdrop-blur-sm`}
-                >
-                  {product.status}
-                </span>
-              </div>
+            {/* Status badge */}
+            <div className="absolute bottom-3 left-3">
+              <span
+                className={`text-xs font-medium px-3 py-1 rounded-full ${getStatusColor()} backdrop-blur-sm`}
+              >
+                {product.status}
+              </span>
             </div>
           </div>
+        </div>
 
-          {/* Product Info */}
-          <div
-            className={`p-4 md:p-6 ${
-              layout === "list"
-                ? "sm:flex-1 sm:flex sm:flex-col sm:justify-between"
-                : ""
-            }`}
-          >
-            <div className={layout === "list" ? "sm:mb-4" : ""}>
-              <div className="mb-2 md:mb-3">
-                <span className="inline-flex items-center gap-1.5 md:gap-2 text-xs font-medium text-[#e39a89] bg-[#e39a89]/10 dark:bg-[#e39a89]/20 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full">
-                  <FiTag className="w-2.5 h-2.5 md:w-3 md:h-3" />
-                  {product.category}
+        {/* Product Info */}
+        <div
+          className={`p-4 md:p-6 ${
+            layout === "list"
+              ? "sm:flex-1 sm:flex sm:flex-col sm:justify-between"
+              : ""
+          }`}
+        >
+          <div className={layout === "list" ? "sm:mb-4" : ""}>
+            <div className="mb-2 md:mb-3">
+              <span className="inline-flex items-center gap-1.5 md:gap-2 text-xs font-medium text-[#c9614d] dark:text-[#E39A89] bg-[#E39A89]/10 dark:bg-[#E39A89]/15 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full">
+                <FiTag className="w-2.5 h-2.5 md:w-3 md:h-3" />
+                {product.category}
+              </span>
+            </div>
+            <div className="flex items-start justify-between gap-3 md:gap-4 mb-2 md:mb-3">
+              <h3 className="font-bold text-[#1b3c35] dark:text-white text-base md:text-lg line-clamp-1 flex-1">
+                {product.name}
+              </h3>
+            </div>
+
+            <div className="mb-1">
+              <div className="flex flex-wrap items-baseline gap-2 mb-2">
+                <span className="text-xl md:text-2xl font-bold text-[#1b3c35] dark:text-white">
+                  ₵{product.discountedPrice.toFixed(2)}
                 </span>
-              </div>
-              <div className="flex items-start justify-between gap-3 md:gap-4 mb-2 md:mb-3">
-                <h3 className="font-bold text-gray-800 dark:text-white text-base md:text-lg line-clamp-1 flex-1">
-                  {product.name}
-                </h3>
-              </div>
-
-              <div className="mb-3 md:mb-4">
-                <div className="flex flex-wrap items-baseline gap-2 mb-2">
-                  <span className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">
-                    ₵{product.discountedPrice.toFixed(2)}
-                  </span>
-                  {product.originalPrice > product.discountedPrice && (
-                    <>
-                      <span className="text-xs md:text-sm text-gray-400 line-through">
-                        ₵{product.originalPrice.toFixed(2)}
-                      </span>
-                      <span className="text-xs font-medium text-green-600 bg-green-50 dark:bg-green-900/30 px-1.5 py-0.5 md:px-2 md:py-0.5 rounded">
-                        Save ₵
-                        {(
-                          product.originalPrice - product.discountedPrice
-                        ).toFixed(2)}
-                      </span>
-                    </>
-                  )}
-                </div>
+                {product.originalPrice > product.discountedPrice && (
+                  <>
+                    <span className="text-xs md:text-sm text-[#26261F]/35 dark:text-gray-500 line-through">
+                      ₵{product.originalPrice.toFixed(2)}
+                    </span>
+                    <span className="text-xs font-medium text-[#c9614d] dark:text-[#E39A89] bg-[#E39A89]/10 px-1.5 py-0.5 md:px-2 md:py-0.5 rounded">
+                      Save ₵
+                      {(
+                        product.originalPrice - product.discountedPrice
+                      ).toFixed(2)}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -317,7 +318,7 @@ export default function ProductCard({
       </Link>
 
       {!isMobile && (
-        <div className="absolute -inset-1 bg-gradient-to-r from-[#e39a89]/10 via-[#d87a6a]/5 to-[#c86a5a]/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-500 -z-10"></div>
+        <div className="absolute -inset-1 bg-gradient-to-r from-[#E39A89]/10 via-[#c9614d]/5 to-[#8FA593]/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-500 -z-10"></div>
       )}
     </div>
   );

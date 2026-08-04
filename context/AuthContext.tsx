@@ -78,7 +78,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         unsubscribeCart = onSnapshot(cartRef, (snapshot) => {
           const total = snapshot.docs.reduce(
             (acc, doc) => acc + (doc.data().quantity || 1),
-            0
+            0,
           );
           setCartItemsCount(total);
         });
@@ -125,9 +125,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           addedAt: serverTimestamp(),
         });
       }
-    } catch (err) {
-      console.error("Failed to toggle favorite:", err);
-    }
+    } catch (err) {}
   };
 
   const login = async (email: string, password: string) => {
@@ -142,7 +140,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       email,
-      password
+      password,
     );
 
     if (name && userCredential.user) {

@@ -29,6 +29,7 @@ export default function ClientNavbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
+
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window === "undefined") return false;
 
@@ -102,9 +103,7 @@ export default function ClientNavbar() {
       await logout();
       setIsUserMenuOpen(false);
       router.push("/");
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) {}
   };
 
   const handleLogin = () => router.push("/login");

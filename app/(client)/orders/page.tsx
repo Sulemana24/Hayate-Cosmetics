@@ -134,7 +134,6 @@ export default function OrdersPage() {
         minute: "2-digit",
       });
     } catch (error) {
-      console.error("Error formatting date:", error, timestamp);
       return "Invalid date";
     }
   };
@@ -184,10 +183,7 @@ export default function OrdersPage() {
     }
   };
 
-  // Download receipt function
-  // Download receipt function - FIXED VERSION
   const downloadReceipt = (order: Order) => {
-    // Handle Firestore Timestamp properly
     let date: Date;
 
     if (order.createdAt instanceof Timestamp) {
@@ -197,18 +193,6 @@ export default function OrdersPage() {
     } else {
       date = new Date();
     }
-
-    const formattedDate = date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-
-    const formattedTime = date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
 
     const formattedDate2 = date.toLocaleDateString("en-US", {
       year: "numeric",
@@ -449,17 +433,14 @@ export default function OrdersPage() {
     </html>
   `;
 
-    // Create a Blob with the HTML content
     const blob = new Blob([receiptHTML], { type: "text/html" });
     const url = URL.createObjectURL(blob);
 
-    // Open in new window for printing/saving
     const newWindow = window.open("", "_blank");
     if (newWindow) {
       newWindow.document.write(receiptHTML);
       newWindow.document.close();
     } else {
-      // Fallback: download as HTML file
       const link = document.createElement("a");
       link.href = url;
       link.download = `receipt-${order.orderCode || order.id.slice(-8)}.html`;
@@ -480,7 +461,7 @@ export default function OrdersPage() {
   };
 
   const handleReviewSubmitted = () => {
-    console.log("Review submitted successfully");
+    // Review submitted successfully
   };
 
   const filteredOrders =
@@ -540,7 +521,7 @@ export default function OrdersPage() {
 
       setOrders(ordersList);
     } catch (error) {
-      console.error("Failed to refresh orders:", error);
+      // Silent fail
     } finally {
       setRefreshing(false);
     }
@@ -591,7 +572,7 @@ export default function OrdersPage() {
 
         setOrders(ordersList);
       } catch (error) {
-        console.error("Failed to fetch orders:", error);
+        // Silent fail
       } finally {
         setLoading(false);
       }
@@ -622,7 +603,6 @@ export default function OrdersPage() {
 
   return (
     <div className="min-h-screen bg-[#FBF6EF] dark:bg-[#0f1e1a]">
-      {/* Header Section */}
       <div className="bg-gradient-to-br from-[#1b3c35] to-[#254f45] py-10 sm:py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
@@ -664,7 +644,6 @@ export default function OrdersPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        {/* Status Filter Tabs */}
         <div className="mb-8">
           <div className="flex flex-wrap gap-2 mb-6">
             {[
@@ -711,7 +690,6 @@ export default function OrdersPage() {
             ))}
           </div>
 
-          {/* Stats Summary */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
             <div className="bg-white dark:bg-[#16302a] rounded-xl p-4 ring-1 ring-black/5 dark:ring-white/5">
               <div className="flex items-center justify-between">
@@ -819,7 +797,6 @@ export default function OrdersPage() {
                   key={order.id}
                   className="group bg-white dark:bg-[#16302a] rounded-2xl ring-1 ring-black/5 dark:ring-white/5 hover:shadow-xl transition-shadow duration-300 overflow-hidden"
                 >
-                  {/* Order Header */}
                   <div className="p-4 sm:p-6 border-b border-[#1b3c35]/10 dark:border-white/10">
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                       <div className="flex items-center gap-4">
@@ -867,10 +844,8 @@ export default function OrdersPage() {
                     </div>
                   </div>
 
-                  {/* Order Content */}
                   <div className="p-4 sm:p-6">
                     <div className="grid lg:grid-cols-2 gap-6">
-                      {/* Order Items */}
                       <div>
                         <h4 className="font-semibold text-[#1b3c35] dark:text-white mb-4 flex items-center gap-2">
                           <FiShoppingBag className="w-4 h-4" />
@@ -907,7 +882,6 @@ export default function OrdersPage() {
                         </div>
                       </div>
 
-                      {/* Shipping Information */}
                       <div>
                         <h4 className="font-semibold text-[#1b3c35] dark:text-white mb-4 flex items-center gap-2">
                           <FiMapPin className="w-4 h-4" />
@@ -978,9 +952,7 @@ export default function OrdersPage() {
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
                     <div className="flex flex-wrap gap-3 pt-6 border-t border-[#1b3c35]/10 dark:border-white/10 mt-6">
-                      {/* Download Receipt Button - Added */}
                       <button
                         onClick={() => downloadReceipt(order)}
                         className="px-4 py-2.5 bg-[#1b3c35]/10 text-[#1b3c35] dark:text-white dark:bg-white/10 border border-[#1b3c35]/20 dark:border-white/20 rounded-lg hover:bg-[#1b3c35]/20 dark:hover:bg-white/20 transition-colors font-medium text-sm flex items-center gap-2 cursor-pointer"
@@ -1018,7 +990,6 @@ export default function OrdersPage() {
           </div>
         )}
 
-        {/* Review Modal */}
         {selectedProduct && (
           <ReviewModal
             isOpen={showReviewModal}
@@ -1033,7 +1004,6 @@ export default function OrdersPage() {
           />
         )}
 
-        {/* Order Status Guide */}
         <div className="mt-10 sm:mt-12 pt-8 border-t border-[#1b3c35]/10 dark:border-white/10">
           <h3 className="text-lg font-bold text-[#1b3c35] dark:text-white mb-6">
             Order Status Guide
@@ -1084,7 +1054,6 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        {/* Need Help Section */}
         <div className="mt-8 p-6 bg-[#E39A89]/10 rounded-2xl border border-[#E39A89]/25">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>

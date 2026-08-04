@@ -291,7 +291,6 @@ export default function ProductDetailPage() {
           });
         }
       } catch (err) {
-        console.error("Error fetching product:", err);
         showToast({
           title: "Error",
           message: "Failed to load product. Please try again.",
@@ -314,7 +313,11 @@ export default function ProductDetailPage() {
         const favoriteSnap = await getDoc(favoriteRef);
         setIsFavorite(favoriteSnap.exists());
       } catch (err) {
-        console.error("Error fetching favorite status:", err);
+        showToast({
+          title: "Error",
+          message: "Failed to fetch favorite status. Please try again.",
+          type: "error",
+        });
       }
     };
 

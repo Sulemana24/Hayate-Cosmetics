@@ -99,7 +99,6 @@ export default function ImportedCheckoutPage() {
 
         setCartItems(items);
       } catch (error) {
-        console.error("Error fetching cart:", error);
         showToast({
           title: "Error",
           message: "Failed to load cart items",
@@ -189,7 +188,6 @@ export default function ImportedCheckoutPage() {
         type: "success",
       });
     } catch (error) {
-      console.error("Payment error:", error);
       showToast({
         title: "Error",
         message: "Payment failed. Please try again.",

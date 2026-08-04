@@ -136,7 +136,6 @@ export default function OrderDetailPage() {
           router.push("/admin/orders");
         }
       } catch (error) {
-        console.error("Failed to fetch order:", error);
         showToast({
           title: "Error",
           message: "Failed to load order details",
@@ -176,7 +175,6 @@ export default function OrderDetailPage() {
 
       setShowStatusDropdown(false);
     } catch (error) {
-      console.error("Failed to update order:", error);
       showToast({
         title: "Error",
         message: "Failed to update order status",

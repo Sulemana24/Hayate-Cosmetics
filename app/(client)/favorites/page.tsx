@@ -121,7 +121,7 @@ export default function Favorites() {
           db,
           "users",
           currentUserId,
-          "favorites"
+          "favorites",
         );
         const snapshot = await getDocs(favoritesRef);
 
@@ -135,7 +135,7 @@ export default function Favorites() {
             ({
               id: docSnap.id,
               ...docSnap.data(),
-            } as Favorite)
+            }) as Favorite,
         );
 
         const productIds = favoriteDocs.map((f) => f.productId);
@@ -149,7 +149,7 @@ export default function Favorites() {
 
         for (const batch of productBatches) {
           const q = await getDocs(
-            query(collection(db, "products"), where("__name__", "in", batch))
+            query(collection(db, "products"), where("__name__", "in", batch)),
           );
 
           q.forEach((docSnap) => {
@@ -169,10 +169,10 @@ export default function Favorites() {
             quantity === null
               ? "Out of Stock"
               : quantity === 0
-              ? "Out of Stock"
-              : quantity <= 5
-              ? "Low Stock"
-              : "In Stock";
+                ? "Out of Stock"
+                : quantity <= 5
+                  ? "Low Stock"
+                  : "In Stock";
 
           return {
             id: fav.productId,
@@ -208,7 +208,7 @@ export default function Favorites() {
     switch (sortType) {
       case "recent":
         return sorted.sort(
-          (a, b) => getTimestampValue(b.addedAt) - getTimestampValue(a.addedAt)
+          (a, b) => getTimestampValue(b.addedAt) - getTimestampValue(a.addedAt),
         );
       case "price-low":
         return sorted.sort((a, b) => a.discountedPrice - b.discountedPrice);
@@ -245,15 +245,18 @@ export default function Favorites() {
 
     try {
       const promises = selectedItems.map((itemId) =>
-        deleteDoc(doc(db, "users", currentUserId, "favorites", itemId))
+        deleteDoc(doc(db, "users", currentUserId, "favorites", itemId)),
       );
       await Promise.all(promises);
       setFavorites(
-        favorites.filter((item) => !selectedItems.includes(item.id))
+        favorites.filter((item) => !selectedItems.includes(item.id)),
       );
       setSelectedItems([]);
     } catch (error) {
-      console.error("Error removing multiple favorites:", error);
+      showToast({
+        type: "error",
+        message: "Failed to remove selected items. Please try again.",
+      });
     }
   };
 
@@ -458,7 +461,7 @@ export default function Favorites() {
                         .replace("-", " ")
                         .replace(/\b\w/g, (l) => l.toUpperCase())}
                     </button>
-                  )
+                  ),
                 )}
               </div>
             </div>
@@ -691,19 +694,19 @@ export default function Favorites() {
                               product.quantity === null
                                 ? "text-gray-500"
                                 : product.quantity > 10
-                                ? "text-green-600 dark:text-green-400"
-                                : product.quantity > 0
-                                ? "text-yellow-600 dark:text-yellow-400"
-                                : "text-red-600 dark:text-red-400"
+                                  ? "text-green-600 dark:text-green-400"
+                                  : product.quantity > 0
+                                    ? "text-yellow-600 dark:text-yellow-400"
+                                    : "text-red-600 dark:text-red-400"
                             }`}
                           >
                             {product.quantity === null
                               ? "Unavailable"
                               : product.quantity > 10
-                              ? "In Stock"
-                              : product.quantity > 0
-                              ? `${product.quantity} left`
-                              : "Out of Stock"}
+                                ? "In Stock"
+                                : product.quantity > 0
+                                  ? `${product.quantity} left`
+                                  : "Out of Stock"}
                           </span>
                         </div>
                       </div>
@@ -726,8 +729,8 @@ export default function Favorites() {
                           {product.status === "Out of Stock"
                             ? "Out of Stock"
                             : isInCart
-                            ? "In Cart"
-                            : "Add to Cart"}
+                              ? "In Cart"
+                              : "Add to Cart"}
                         </button>
                         <button
                           onClick={() => router.push(`/product/${product.id}`)}

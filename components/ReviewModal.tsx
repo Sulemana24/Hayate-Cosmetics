@@ -70,7 +70,6 @@ export default function ReviewModal({
       const userName =
         user.displayName || user.email?.split("@")[0] || "Anonymous";
 
-      // Create review data
       const reviewData = {
         productId: productId,
         orderId: orderId,
@@ -86,14 +85,9 @@ export default function ReviewModal({
         verifiedPurchase: true,
       };
 
-      console.log("Submitting review:", reviewData);
-
-      // STEP 1: Add the review
       const reviewsRef = collection(db, "reviews");
       const docRef = await addDoc(reviewsRef, reviewData);
-      console.log("✅ Review added with ID:", docRef.id);
 
-      // STEP 2: Try to update product rating (with error handling)
       try {
         const productRef = doc(db, "products", productId);
         const productSnap = await getDoc(productRef);
@@ -112,24 +106,9 @@ export default function ReviewModal({
             reviewCount: newReviewCount,
             updatedAt: serverTimestamp(),
           });
-          console.log("✅ Product updated with new rating");
-        } else {
-          console.warn("⚠️ Product not found, skipping rating update");
         }
       } catch (productError: unknown) {
-        // If product update fails, log it but don't fail the review
-        if (productError instanceof Error) {
-          console.warn(
-            "⚠️ Could not update product rating:",
-            productError.message,
-          );
-        } else {
-          console.warn(
-            "⚠️ Could not update product rating:",
-            String(productError),
-          );
-        }
-        // Don't throw - the review was already added successfully
+        // Silent fail - review was already added successfully
       }
 
       setSuccess(true);
@@ -142,9 +121,6 @@ export default function ReviewModal({
         if (onReviewSubmitted) onReviewSubmitted();
       }, 1500);
     } catch (err: unknown) {
-      console.error("❌ Error submitting review:", err);
-
-      // Type guard for Firebase errors
       const isFirebaseError = (
         error: unknown,
       ): error is { code: string; message: string } => {
@@ -180,7 +156,6 @@ export default function ReviewModal({
     }
   };
 
-  // Star rating component
   const renderStars = () => {
     const stars = [];
     const currentRating = hoveredRating || rating;
@@ -212,7 +187,6 @@ export default function ReviewModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-        {/* Header */}
         <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             Write a Review
@@ -226,7 +200,6 @@ export default function ReviewModal({
           </button>
         </div>
 
-        {/* Content */}
         <div className="p-6">
           {success ? (
             <div className="text-center py-8">
@@ -245,7 +218,6 @@ export default function ReviewModal({
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Product name */}
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Reviewing
@@ -255,7 +227,6 @@ export default function ReviewModal({
                 </p>
               </div>
 
-              {/* Rating */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Rating *
@@ -272,7 +243,6 @@ export default function ReviewModal({
                 )}
               </div>
 
-              {/* Review Title */}
               <div>
                 <label
                   htmlFor="review-title"
@@ -292,7 +262,6 @@ export default function ReviewModal({
                 />
               </div>
 
-              {/* Review Comment */}
               <div>
                 <label
                   htmlFor="review-comment"
@@ -316,7 +285,6 @@ export default function ReviewModal({
                 </div>
               </div>
 
-              {/* Error message */}
               {error && (
                 <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm flex items-start gap-2">
                   <span className="mt-0.5">⚠️</span>
@@ -324,7 +292,6 @@ export default function ReviewModal({
                 </div>
               )}
 
-              {/* Actions */}
               <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <button
                   type="button"
@@ -368,7 +335,6 @@ export default function ReviewModal({
                 </button>
               </div>
 
-              {/* Note about reviews */}
               <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
                 By submitting a review, you agree to our terms and conditions.
                 Your review will be visible to other customers.

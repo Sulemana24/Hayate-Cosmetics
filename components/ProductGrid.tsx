@@ -48,7 +48,6 @@ export default function ProductsGrid({
         setProducts(fetchedProducts);
         setError(null);
       } catch (err) {
-        console.error(err);
         setError("Failed to load products.");
       } finally {
         setLoading(false);
@@ -64,13 +63,13 @@ export default function ProductsGrid({
 
     if (categoryFilter !== "all") {
       temp = temp.filter(
-        (p) => p.category.toLowerCase() === categoryFilter.toLowerCase()
+        (p) => p.category.toLowerCase() === categoryFilter.toLowerCase(),
       );
     }
 
     if (searchTerm.trim()) {
       temp = temp.filter((p) =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase())
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()),
       );
     }
 

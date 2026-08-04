@@ -27,7 +27,6 @@ import {
 } from "react-icons/fi";
 import { IoMdClose } from "react-icons/io";
 
-// Helper function to normalize timestamps
 const getTimestamp = (value: unknown): number => {
   if (!value) return 0;
   if (typeof value === "object" && value !== null && "toMillis" in value) {
@@ -66,7 +65,6 @@ interface Product {
   popularity?: number;
 }
 
-// Filter options - dynamically populated from products
 const SORT_OPTIONS = [
   { label: "Newest First", value: "newest" },
   { label: "Price: Low to High", value: "price_asc" },
@@ -109,7 +107,6 @@ export default function ImportedGoodsPage() {
   const [inStockOnly, setInStockOnly] = useState(false);
   const [onSaleOnly, setOnSaleOnly] = useState(false);
 
-  // Get unique sub-categories from imported products
   const getSubCategories = () => {
     const subCategories = new Set<string>();
     products.forEach((product) => {
@@ -122,14 +119,12 @@ export default function ImportedGoodsPage() {
 
   const subCategoryOptions = getSubCategories();
 
-  // Fetch imported goods (products with category "Importation")
   useEffect(() => {
     const fetchImportedGoods = async () => {
       try {
         setLoading(true);
         const productsRef = collection(db, "products");
 
-        // Query for products where category is "Importation"
         const q = query(
           productsRef,
           where("category", "==", "Importation"),
@@ -143,7 +138,6 @@ export default function ImportedGoodsPage() {
           return {
             id: doc.id,
             ...data,
-            // Calculate discount percentage if not present
             discountPercentage:
               data.discountPercentage ||
               (data.originalPrice > data.discountedPrice
@@ -153,16 +147,12 @@ export default function ImportedGoodsPage() {
                       100,
                   )
                 : 0),
-            // Set origin based on sub-category or default
             origin: "Pre-order",
           };
         }) as Product[];
 
         setProducts(productsList);
       } catch (error) {
-        console.error("Error fetching pre-ordered goods:", error);
-
-        // Fallback: Fetch all products and filter client-side
         try {
           const allProductsRef = collection(db, "products");
           const allSnapshot = await getDocs(allProductsRef);
@@ -180,13 +170,11 @@ export default function ImportedGoodsPage() {
                 : 0),
           })) as Product[];
 
-          // Filter products with category "Importation"
           const imported = allProducts.filter(
             (p) => p.category === "Importation",
           );
           setProducts(imported);
         } catch (fallbackError) {
-          console.error("Fallback error:", fallbackError);
           setProducts([]);
         }
       } finally {
@@ -197,7 +185,6 @@ export default function ImportedGoodsPage() {
     fetchImportedGoods();
   }, []);
 
-  // Calculate max price for range
   useEffect(() => {
     if (products.length > 0) {
       const max = Math.max(
@@ -208,11 +195,9 @@ export default function ImportedGoodsPage() {
     }
   }, [products]);
 
-  // Filter and sort products
   useEffect(() => {
     let result = [...products];
 
-    // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       result = result.filter(
@@ -225,25 +210,21 @@ export default function ImportedGoodsPage() {
       );
     }
 
-    // Sub-Category filter
     if (selectedSubCategory !== "All Sub-Categories") {
       result = result.filter(
         (product) => product.subCategory === selectedSubCategory,
       );
     }
 
-    // Price range filter
     result = result.filter((product) => {
       const price = product.discountedPrice || product.price || 0;
       return price >= priceRange[0] && price <= priceRange[1];
     });
 
-    // In stock filter
     if (inStockOnly) {
       result = result.filter((product) => product.status === "In Stock");
     }
 
-    // On sale filter
     if (onSaleOnly) {
       result = result.filter(
         (product) =>
@@ -253,7 +234,6 @@ export default function ImportedGoodsPage() {
       );
     }
 
-    // Sorting
     switch (sortBy) {
       case "newest":
         result.sort((a, b) => {
@@ -319,7 +299,6 @@ export default function ImportedGoodsPage() {
 
   return (
     <div className="min-h-screen bg-[#FBF6EF] dark:bg-[#0f1e1a]">
-      {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-[#1b3c35] to-[#2a5a4f] dark:from-[#0f1e1a] dark:to-[#1b3c35] py-12 md:py-20">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="max-w-3xl">
@@ -347,15 +326,12 @@ export default function ImportedGoodsPage() {
             </div>
           </div>
         </div>
-        {/* Decorative element */}
         <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#FBF6EF] dark:from-[#0f1e1a] to-transparent" />
       </section>
 
-      {/* Search and Filters */}
       <section className="py-6 sticky top-0 bg-[#FBF6EF] dark:bg-[#0f1e1a] z-30 border-b border-[#1b3c35]/10 dark:border-white/10">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="flex flex-col lg:flex-row gap-4">
-            {/* Search Bar */}
             <div className="flex-1 relative">
               <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-[#1b3c35]/40 dark:text-white/40 w-5 h-5" />
               <input
@@ -375,7 +351,6 @@ export default function ImportedGoodsPage() {
               )}
             </div>
 
-            {/* View Toggle & Filter Button */}
             <div className="flex items-center gap-3">
               <div className="hidden sm:flex bg-white dark:bg-[#16302a] rounded-xl ring-1 ring-[#1b3c35]/15 dark:ring-white/15 p-1">
                 <button
@@ -415,7 +390,6 @@ export default function ImportedGoodsPage() {
             </div>
           </div>
 
-          {/* Active Filters */}
           {hasActiveFilters() && (
             <div className="flex flex-wrap gap-2 mt-4">
               {selectedSubCategory !== "All Sub-Categories" && (
@@ -450,10 +424,8 @@ export default function ImportedGoodsPage() {
             </div>
           )}
 
-          {/* Expanded Filters */}
           {showFilters && (
             <div className="mt-4 p-4 sm:p-6 bg-white dark:bg-[#16302a] rounded-2xl ring-1 ring-[#1b3c35]/10 dark:ring-white/10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Sub-Category Filter */}
               <div>
                 <label className="block text-sm font-medium text-[#1b3c35] dark:text-white mb-2">
                   Sub-Category
@@ -471,7 +443,6 @@ export default function ImportedGoodsPage() {
                 </select>
               </div>
 
-              {/* Sort By */}
               <div>
                 <label className="block text-sm font-medium text-[#1b3c35] dark:text-white mb-2">
                   Sort By
@@ -489,7 +460,6 @@ export default function ImportedGoodsPage() {
                 </select>
               </div>
 
-              {/* Price Range */}
               <div>
                 <label className="block text-sm font-medium text-[#1b3c35] dark:text-white mb-2">
                   Price Range: ₵{priceRange[0]} - ₵{priceRange[1]}
@@ -512,7 +482,6 @@ export default function ImportedGoodsPage() {
                 </div>
               </div>
 
-              {/* Toggle Filters */}
               <div className="md:col-span-2 lg:col-span-4 flex flex-wrap gap-4 pt-2 border-t border-[#1b3c35]/10 dark:border-white/10">
                 <label className="flex items-center gap-2 text-sm text-[#1b3c35] dark:text-white">
                   <input
@@ -544,7 +513,6 @@ export default function ImportedGoodsPage() {
         </div>
       </section>
 
-      {/* Results Count */}
       <section className="py-4">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="flex justify-between items-center">
@@ -562,7 +530,6 @@ export default function ImportedGoodsPage() {
         </div>
       </section>
 
-      {/* Product Grid */}
       <section className="py-8 pb-20">
         <div className="container mx-auto px-4 sm:px-6">
           {loading ? (
@@ -601,7 +568,6 @@ export default function ImportedGoodsPage() {
                       height={400}
                       className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
                     />
-                    {/* Pre-Order Badge */}
                     <div className="absolute top-2.5 left-2.5 bg-[#1b3c35] text-white px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider flex items-center gap-1">
                       <FiMapPin className="w-3 h-3" />
                       Pre-Order

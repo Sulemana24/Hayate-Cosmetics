@@ -11,7 +11,6 @@ import {
   FiTruck,
   FiShield,
   FiRefreshCw,
-  FiHeart,
 } from "react-icons/fi";
 import Image1 from "../public/images/skinbg.jpg";
 import Image2 from "../public/images/accbg.jpg";
@@ -19,34 +18,15 @@ import Image3 from "../public/images/perbg.jpg";
 import Image4 from "../public/images/catb.jpg";
 import Image5 from "../public/images/catp.jpg";
 import Image6 from "../public/images/catcos.jpg";
-import Image7 from "../public/images/mak.jpg";
+
 import Image8 from "../public/images/Import.jpg";
-import {
-  collection,
-  getDocs,
-  limit,
-  query,
-  doc,
-  setDoc,
-  deleteDoc,
-  getDoc,
-  serverTimestamp,
-  where,
-} from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getAuth } from "firebase/auth";
-import ProductCard from "@/components/ProductCard";
-import { Product } from "@/types/product";
 
 export default function HeroSection() {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [allTrending, setAllTrending] = useState<Product[]>([]);
-  const [visibleCount, setVisibleCount] = useState(3);
-  const [loadingTrending, setLoadingTrending] = useState(true);
-  const [favorites, setFavorites] = useState<{ [key: string]: boolean }>({});
-  const [loadingFavs, setLoadingFavs] = useState<{ [key: string]: boolean }>(
-    {},
-  );
+
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>(
     {},
@@ -85,9 +65,7 @@ export default function HeroSection() {
         }
 
         setCategoryCounts(counts);
-      } catch (error) {
-        console.error("Error fetching category counts:", error);
-      }
+      } catch (error) {}
     };
 
     fetchCategoryCounts();
