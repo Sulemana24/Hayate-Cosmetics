@@ -71,7 +71,7 @@ export default function HeroSection() {
           "Skincare",
           "Fragrance",
           "Accessories",
-          "Makeup",
+          "Importation",
         ];
         const counts: Record<string, number> = {};
 
@@ -203,91 +203,6 @@ export default function HeroSection() {
 
   const goToSlide = (index: number) => {
     setCurrentSlide(index);
-  };
-
-  useEffect(() => {
-    const fetchTrendingProducts = async () => {
-      try {
-        const q = query(collection(db, "products"), limit(30));
-        const snapshot = await getDocs(q);
-
-        const products: Product[] = snapshot.docs.map((doc) => {
-          const { id, ...rest } = doc.data() as Product;
-
-          return {
-            id: doc.id,
-            ...rest,
-          };
-        });
-
-        const shuffled = products.sort(() => 0.5 - Math.random());
-
-        setAllTrending(shuffled);
-      } catch (error) {
-        console.error("Error fetching trending products:", error);
-      } finally {
-        setLoadingTrending(false);
-      }
-    };
-
-    fetchTrendingProducts();
-  }, []);
-
-  useEffect(() => {
-    const fetchFavorites = async () => {
-      if (!currentUserId) return;
-      const favs: { [key: string]: boolean } = {};
-      for (const product of allTrending) {
-        try {
-          const favRef = doc(
-            db,
-            "users",
-            currentUserId,
-            "favorites",
-            product.id,
-          );
-          const favSnap = await getDoc(favRef);
-          if (favSnap.exists()) favs[product.id] = true;
-        } catch (error) {
-          console.error("Error fetching favorite:", error);
-        }
-      }
-      setFavorites(favs);
-    };
-    fetchFavorites();
-  }, [allTrending, currentUserId]);
-
-  const toggleFavorite = async (product: Product) => {
-    if (!currentUserId) {
-      alert("You must be logged in to add favorites");
-      return;
-    }
-    const nextState = !favorites[product.id];
-    setFavorites({ ...favorites, [product.id]: nextState });
-    setLoadingFavs({ ...loadingFavs, [product.id]: true });
-
-    const favRef = doc(db, "users", currentUserId, "favorites", product.id);
-
-    try {
-      if (nextState) {
-        await setDoc(favRef, {
-          productId: product.id,
-          name: product.name,
-          imageUrl: product.imageUrl,
-          price: product.discountedPrice,
-          category: product.category,
-          addedAt: serverTimestamp(),
-        });
-      } else {
-        await deleteDoc(favRef);
-      }
-    } catch (error) {
-      console.error("Failed to update favorite:", error);
-      setFavorites({ ...favorites, [product.id]: !nextState });
-      alert("Failed to update favorite. Try again.");
-    } finally {
-      setLoadingFavs({ ...loadingFavs, [product.id]: false });
-    }
   };
 
   return (
