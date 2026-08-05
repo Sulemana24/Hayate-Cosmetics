@@ -1,7 +1,14 @@
 import CategoryHeader from "@/components/category/CategoryHeader";
 import SkincareProductsClient from "@/components/SkincareProductsClient";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
+} from "firebase/firestore";
 import { Product } from "@/types/product";
 import Image1 from "@/public/images/skinbg.jpg";
 
@@ -20,6 +27,7 @@ async function getSkincareProducts() {
       productsRef,
       where("categorySlug", "==", "skincare"),
       orderBy("createdAt", "desc"),
+      limit(1000),
     );
     const snapshot = await getDocs(q);
 
