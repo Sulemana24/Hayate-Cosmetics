@@ -1,16 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
-import {
-  FiInstagram,
-  FiTwitter,
-  FiYoutube,
-  FiMail,
-  FiPhone,
-  FiMapPin,
-} from "react-icons/fi";
+import { FiYoutube, FiMail, FiPhone, FiMapPin } from "react-icons/fi";
 import { FaTiktok, FaWhatsapp } from "react-icons/fa";
-
-import Logo from "@/public/images/comlogo.png";
+import FootLogo from "@/public/images/favicon.png";
 
 export default function ClientFooter() {
   const currentYear = new Date().getFullYear();
@@ -23,7 +15,7 @@ export default function ClientFooter() {
             <div className="flex items-center gap-3 mb-6">
               <div className="relative w-14 h-14">
                 <Image
-                  src={Logo}
+                  src={FootLogo}
                   alt="Hayate Cosmetics"
                   width={56}
                   height={56}
@@ -78,10 +70,10 @@ export default function ClientFooter() {
               </li>
               <li>
                 <Link
-                  href="/category/fragrance"
+                  href="/category/importation"
                   className="text-white/70 hover:text-[#e39a89] transition-colors duration-200"
                 >
-                  Fragrance
+                  Importation
                 </Link>
               </li>
               <li>
@@ -163,7 +155,7 @@ export default function ClientFooter() {
               </li>
               <li>
                 <Link
-                  href="/terms"
+                  href="/terms-of-service"
                   className="text-white/70 hover:text-[#e39a89] transition-colors duration-200"
                 >
                   Terms of Service
@@ -227,13 +219,13 @@ export default function ClientFooter() {
                 >
                   <FaTiktok className="w-5 h-5 group-hover:scale-110 transition-transform" />
                 </a>
-                <a
+                {/* <a
                   href="#"
                   className="w-12 h-12 rounded-full bg-white/10 hover:bg-[#e39a89] flex items-center justify-center transition-all duration-300 group"
                   aria-label="YouTube"
                 >
                   <FiYoutube className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                </a>
+                </a> */}
               </div>
             </div>
           </div>
@@ -249,7 +241,7 @@ export default function ClientFooter() {
                 © {currentYear} Hayate Cosmetics. All rights reserved.
               </p>
               <p className="text-white/60 text-sm">
-                Developed by Simdi Technologies
+                Developed by Simdi Technologies(0551333780)
               </p>
             </div>
           </div>

@@ -424,7 +424,7 @@ export default function TermsOfServicePage() {
                             href="mailto:legal@hayatecosmetics.com"
                             className="text-[#e39a89] hover:underline"
                           >
-                            legal@hayatecosmetics.com
+                            yussifhayate10@icloud.com
                           </Link>
                         </div>
                         <div>
@@ -432,11 +432,11 @@ export default function TermsOfServicePage() {
                             Address
                           </h3>
                           <p>
-                            Hayate Cosmetics Ltd.
+                            Hayate Cosmetics.
                             <br />
-                            123 Beauty Street
+                            Tafo
                             <br />
-                            Accra, Ghana
+                            Kumasi, Ghana
                           </p>
                         </div>
                       </div>

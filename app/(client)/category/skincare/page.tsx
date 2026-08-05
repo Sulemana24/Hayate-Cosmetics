@@ -103,7 +103,7 @@ export default async function SkincarePage() {
         <div className="container mx-auto px-4 md:px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center p-4">
-              <div className="text-2xl font-bold text-[#d87a6a] mb-1">60+</div>
+              <div className="text-2xl font-bold text-[#d87a6a] mb-1">100+</div>
               <div className="text-sm text-gray-600">Products</div>
             </div>
             <div className="text-center p-4">
